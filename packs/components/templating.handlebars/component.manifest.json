@@ -1,5 +1,5 @@
 {
-  "$schema": "https://greentic-ai.github.io/greentic-component/schemas/v1/component.manifest.schema.json",
+  "$schema": "https://greenticai.github.io/greentic-component/schemas/v1/component.manifest.schema.json",
   "artifacts": {
     "component_wasm": "stub.wasm"
   },
@@ -108,3 +108,4 @@
   "version": "0.1.0",
   "world": "greentic:flow/templating@1.0.0"
 }
+
