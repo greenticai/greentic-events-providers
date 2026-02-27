@@ -24,7 +24,7 @@ jobs:
       RUSTUP_TOOLCHAIN: 1.90.0
       PACK_VERSION: "0.4"
       REGISTRY: ghcr.io
-      OWNER: greentic-ai
+      OWNER: greenticai
       REPO: greentic-packs
     steps:
       - name: Checkout
@@ -84,3 +84,4 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
           VISIBILITY_ENDPOINT: "user"
         run: bash scripts/publish_packs_oci.sh
+
