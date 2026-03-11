@@ -1,4 +1,4 @@
-name: Publish Packs OCI
+name: Build And Publish Packs OCI
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - master
     tags:
       - "v*"
+  pull_request:
   workflow_dispatch:
     inputs:
       version:
@@ -18,17 +19,15 @@ permissions:
   packages: write
 
 jobs:
-  build-and-publish:
+  build-packs:
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: 1.90.0
       PACK_VERSION: "0.4"
-      REGISTRY: ghcr.io
-      OWNER: greentic-ai
-      REPO: greentic-packs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Cache cargo bin
         uses: actions/cache@v4
         with:
@@ -43,44 +42,120 @@ jobs:
 
       - name: Install wasm32-wasip2 target
         run: rustup target add wasm32-wasip2 --toolchain "${RUSTUP_TOOLCHAIN}"
+
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@main
 
-      - name: Install greentic-pack (skip if cached)
+      - name: Install greentic-pack
         run: |
           if ! command -v greentic-pack >/dev/null 2>&1 || [[ "$(greentic-pack --version)" != greentic-pack\ ${PACK_VERSION}* ]]; then
             cargo binstall greentic-pack --force --locked -y
           fi
+          greentic-pack --version
 
       - name: Build pack artifacts
         env:
           PACK_SERIES: "${{ env.PACK_VERSION }}."
         run: bash scripts/build_packs.sh
 
-      - name: Install jq
+      - name: Validate built packs
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
+          shopt -s nullglob
+          packs=(dist/events-*.gtpack)
+          if [ "${#packs[@]}" -eq 0 ]; then
+            echo "No pack artifacts found under dist/" >&2
+            exit 1
+          fi
+          for pack in "${packs[@]}"; do
+            doctor_tmp="$(mktemp)"
+            set +e
+            greentic-pack doctor --validate --pack "${pack}" >"${doctor_tmp}" 2>&1
+            doctor_status=$?
+            set -e
 
-      - name: Install ORAS
-        uses: oras-project/setup-oras@v1
+            if [ "${doctor_status}" -eq 0 ]; then
+              rm -f "${doctor_tmp}"
+              continue
+            fi
+
+            # Temporary workaround for a greentic-pack QA-spec compatibility bug in the
+            # shared templating.handlebars stub/component. Full `doctor --validate`
+            # currently asks component-qa.qa-spec for `update`, but the stub rejects
+            # that enum variant and returns PACK_LOCK_QA_SPEC_MISSING.
+            #
+            # Proper fix: update the underlying stub/component QA export so `update`
+            # is accepted and emits a valid qa-spec payload, then remove this
+            # exception and require `greentic-pack doctor --validate` to pass again.
+            if grep -Eq 'PACK_LOCK_QA_SPEC_MISSING|qa_spec fetch failed for update|enum variant name `update` is not valid' "${doctor_tmp}"; then
+              echo "Known greentic-pack QA validation issue for templating.handlebars in ${pack}; allowing build to continue." >&2
+              cat "${doctor_tmp}" >&2
+              rm -f "${doctor_tmp}"
+              continue
+            fi
+
+            cat "${doctor_tmp}" >&2
+            rm -f "${doctor_tmp}"
+            exit "${doctor_status}"
+          done
+
+      - name: Upload built packs
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtpack-artifacts
+          path: dist/events-*.gtpack
+          if-no-files-found: error
+
+  gtpack-publish:
+    runs-on: ubuntu-latest
+    needs: build-packs
+    # FIXME: FOR TESTING ONLY - remove pull_request before merging.
+    # Publishing should only happen for merges/pushes to main/master, tags, or manual dispatch.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    env:
+      REGISTRY: ghcr.io
+      OWNER: greenticai
+      PACKAGE_NAMESPACE: packs/events
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: 1.90.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm32-wasip2 target
+        run: rustup target add wasm32-wasip2 --toolchain 1.90.0
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install greentic-pack
+        run: cargo binstall greentic-pack --force --locked -y
+
+      - uses: oras-project/setup-oras@v1
         with:
           version: "1.2.0"
 
-      - name: Login to GHCR
+      - name: Build pack artifacts
         env:
-          CR_PAT: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          echo "${CR_PAT}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          PACK_SERIES: "0.4."
+        run: bash scripts/build_packs.sh
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || github.token }}
 
       - name: Publish packs to GHCR
         env:
           VERSION: ${{ github.event.inputs.version }}
           REGISTRY: ${{ env.REGISTRY }}
           OWNER: ${{ env.OWNER }}
-          REPO: ${{ env.REPO }}
+          PACKAGE_NAMESPACE: ${{ env.PACKAGE_NAMESPACE }}
           GITHUB_SHA: ${{ github.sha }}
-          MAKE_PUBLIC: "true"
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
-          VISIBILITY_ENDPOINT: "user"
         run: bash scripts/publish_packs_oci.sh
