@@ -6,7 +6,7 @@ DIST_DIR="${ROOT_DIR}/dist"
 REGISTRY="${REGISTRY:-ghcr.io}"
 OWNER="${OWNER:-greenticai}"
 PACKAGE_NAMESPACE="${PACKAGE_NAMESPACE:-packs/events}"
-SOURCE_ANNOTATION="https://github.com/greentic-ai/greentic-events-providers"
+SOURCE_ANNOTATION="https://github.com/greenticai/greentic-events-providers"
 GITHUB_SHA="${GITHUB_SHA:-$(git -C "${ROOT_DIR}" rev-parse --verify HEAD)}"
 ARTIFACT_TYPE="${ARTIFACT_TYPE:-application/vnd.greentic.gtpack.v1}"
 LAYER_MEDIA_TYPE="${LAYER_MEDIA_TYPE:-application/vnd.greentic.gtpack.layer.v1+tar}"
@@ -91,7 +91,7 @@ build_package_name() {
 for pack in "${PACKS[@]}"; do
   pack_name="$(basename "${pack%.gtpack}")"
   artifact_name="${pack_name}.gtpack"
-  package_name="$(build_package_name "${artifact_name}")"
+  package_name="$(build_package_name "${pack_name}")"
   ref="${REGISTRY}/${OWNER}/${package_name}:${VERSION_RESOLVED}"
   latest_ref="${REGISTRY}/${OWNER}/${package_name}:latest"
 
