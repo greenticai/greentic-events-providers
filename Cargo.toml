@@ -20,7 +20,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 rust-version = "1.90"
-version = "0.4.14"
+version = "0.4.15"
 
 [workspace.dependencies]
 anyhow = "1"
