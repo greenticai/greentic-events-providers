@@ -124,10 +124,23 @@ components:
     host: {}
   wasm: components/templating.handlebars/stub.wasm
 dependencies: []
-flows: []
 assets:
 - path: schemas/events/dummy/README.md
 extensions:
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      schema_version: 1
+      offers:
+        - cap_id: greentic.cap.events.provider.v1
+          offer_id: events-dummy-v1
+          priority: 50
+          provider:
+            component_ref: events-provider-dummy
+            op: events.configure
+          requires_setup: false
+          version: 0.4.12
   greentic.provider-extension.v1:
     kind: greentic.provider-extension.v1
     version: 1.0.0

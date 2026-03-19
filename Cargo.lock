@@ -1263,102 +1263,102 @@ dependencies = [
 
 [[package]]
 name = "events-provider-dummy"
-version = "0.1.0"
+version = "0.4.12"
 dependencies = [
- "anyhow",
  "blake3",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_cbor",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
  "zip",
 ]
 
 [[package]]
 name = "events-provider-email"
-version = "0.1.0"
+version = "0.4.12"
 dependencies = [
- "anyhow",
  "chrono",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
 ]
 
 [[package]]
 name = "events-provider-email-sendgrid"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "chrono",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
 ]
 
 [[package]]
 name = "events-provider-sms"
-version = "0.1.0"
+version = "0.4.12"
 dependencies = [
- "anyhow",
  "chrono",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
 ]
 
 [[package]]
 name = "events-provider-sms-twilio"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "chrono",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
 ]
 
 [[package]]
 name = "events-provider-timer"
-version = "0.1.0"
+version = "0.4.12"
 dependencies = [
- "anyhow",
  "chrono",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
 ]
 
 [[package]]
 name = "events-provider-webhook"
-version = "0.1.0"
+version = "0.4.12"
 dependencies = [
- "anyhow",
  "chrono",
- "greentic-interfaces-guest",
  "greentic-types",
+ "provider-common",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "wit-bindgen 0.52.0",
 ]
 
 [[package]]
@@ -3511,6 +3511,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "provider-common"
+version = "0.4.12"
+dependencies = [
+ "ciborium",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

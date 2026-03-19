@@ -1,8 +1,0 @@
-(module
-  (memory (export "memory") 1)
-  (data (i32.const 0) "{\"plan\":{\"config_patch\":{\"gmail.client_id\":\"gmail-client-id\",\"msgraph.client_id\":\"msgraph-client-id\",\"sender.default_from\":\"noreply@example.com\"},\"secrets_patch\":{\"set\":{\"GMAIL_CLIENT_SECRET\":{\"redacted\":true,\"value\":null},\"GMAIL_REFRESH_TOKEN\":{\"redacted\":true,\"value\":null},\"MSGRAPH_CLIENT_SECRET\":{\"redacted\":true,\"value\":null}},\"delete\":[]},\"webhook_ops\":[],\"subscription_ops\":[{\"op\":\"create\",\"id\":\"msgraph-subscription\",\"metadata\":{\"provider\":\"msgraph\",\"resource\":\"inbox\"}},{\"op\":\"create\",\"id\":\"gmail-watch\",\"metadata\":{\"provider\":\"gmail\",\"label\":\"inbox\"}}],\"oauth_ops\":[],\"notes\":[\"dry-run: email provisioning plan\"]},\"ok\":true,\"step\":\"apply\"}")
-  (func (export "run") (param i32 i32) (result i32 i32)
-    (i32.const 0)
-    (i32.const 649)
-  )
-)

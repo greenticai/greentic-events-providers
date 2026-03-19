@@ -7,12 +7,6 @@ description: Greentic SMS event providers (Twilio)
 authors:
   - Greentic Engineering <engineering@greentic.dev>
 license: MIT
-meta:
-  entry_flows:
-    setup: setup
-    requirements: requirements
-  requires_public_base_url: true
-  capabilities: []
 components:
   - id: events-sms-source
     version: 1.0.0
@@ -70,6 +64,20 @@ components:
         http:
           client: true
     wasm: components/stubs/events-sms-sink.wasm
+  - id: events-provider-sms
+    version: 0.1.0
+    world: greentic:provider/schema-core@1.0.0
+    supports: []
+    profiles:
+      default: stateless
+      supported:
+        - stateless
+    capabilities:
+      wasi:
+        random: false
+        clocks: true
+      host: {}
+    wasm: components/events-provider-sms.wasm
   - id: templating.handlebars
     version: 0.1.0
     world: greentic:flow/templating@1.0.0
@@ -95,15 +103,6 @@ components:
         telemetry:
           scope: node
     wasm: components/templating.handlebars/stub.wasm
-flows:
-  - id: sms-in-default
-    file: flows/in_default.ygtc
-    entrypoints:
-      - sms-in-default
-  - id: sms-out-default
-    file: flows/out_default.ygtc
-    entrypoints:
-      - sms-out-default
 events:
   providers:
     - name: "sms-in-twilio"
@@ -123,6 +122,20 @@ events:
         topics:
           - "sms.out.twilio"
 extensions:
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      schema_version: 1
+      offers:
+        - cap_id: greentic.cap.events.provider.v1
+          offer_id: events-sms-v1
+          priority: 100
+          provider:
+            component_ref: events-provider-sms
+            op: events.configure
+          requires_setup: false
+          version: 0.4.12
   greentic.events.ingress-http.v1:
     kind: greentic.events.ingress-http.v1
     version: 1.0.0

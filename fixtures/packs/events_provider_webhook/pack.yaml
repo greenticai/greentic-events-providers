@@ -23,12 +23,32 @@ components:
   config_schema: schemas/events/webhook/config.schema.json
 dependencies: []
 flows: []
-schemas:
-- path: schemas/events/webhook/config.schema.json
-- path: schemas/events/webhook/state.schema.json
 assets:
 - path: schemas/events/webhook/README.md
 extensions:
+  greentic.events.ingress-http.v1:
+    kind: greentic.events.ingress-http.v1
+    version: 1.0.0
+    inline:
+      handlers:
+      - handler_id: webhook-default
+        method: POST
+        op_id: ingest_http
+        path: /v1/events/ingress/webhook/{tenant}/{team}/{handler}
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      offers:
+      - cap_id: greentic.cap.events.provider.v1
+        offer_id: events-webhook-v1
+        priority: 100
+        provider:
+          component_ref: events-provider-webhook
+          op: ingest_http
+        requires_setup: false
+        version: 0.4.12
+      schema_version: 1
   greentic.provider-extension.v1:
     kind: greentic.provider-extension.v1
     version: 1.0.0
@@ -46,12 +66,3 @@ extensions:
           export: schema-core
           world: greentic:provider/schema-core@1.0.0
         docs_ref: assets/schemas/events/webhook/README.md
-  greentic.events.ingress-http.v1:
-    kind: greentic.events.ingress-http.v1
-    version: 1.0.0
-    inline:
-      handlers:
-      - handler_id: webhook-default
-        method: POST
-        path: /v1/events/ingress/webhook/{tenant}/{team}/{handler}
-        op_id: ingest_http

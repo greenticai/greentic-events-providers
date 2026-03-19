@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Webhook events provider config",
+  "type": "object",
+  "properties": {
+    "target_url": {
+      "type": "string",
+      "format": "uri",
+      "minLength": 1,
+      "description": "Destination URL to publish webhook events to."
+    },
+    "method": {
+      "type": "string",
+      "description": "HTTP method to use (default POST).",
+      "default": "POST",
+      "enum": ["POST", "PUT", "PATCH"]
+    },
+    "headers": {
+      "type": "object",
+      "description": "Optional headers to include on the webhook request.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "auth": {
+      "type": "string",
+      "description": "Optional bearer token to include as Authorization header (no secrets stored here)."
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional timeout in milliseconds for the publish call."
+    }
+  },
+  "required": ["target_url"],
+  "additionalProperties": false
+}

@@ -8,18 +8,26 @@ rust-version = "1.90"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow.workspace = true
-greentic-interfaces-guest = { workspace = true, features = [
-    "component-node",
-    "provider-core-v1",
-    "state-store",
-    "types-core",
-] }
+chrono.workspace = true
+provider-common = { path = "../../crates/provider-common" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 uuid.workspace = true
-chrono.workspace = true
+wit-bindgen.workspace = true
 
 [dev-dependencies]
 greentic-types.workspace = true
 tempfile.workspace = true
+
+[package.metadata.component]
+package = "greentic:events-provider-sms-twilio"
+
+[package.metadata.component.target]
+path = "wit/events-provider-sms-twilio"
+world = "component-v0-v6-twilio"
+
+[package.metadata.component.target.dependencies]
+"greentic:http" = { path = "wit/events-provider-sms-twilio/deps/http" }
+"greentic:secrets-store" = { path = "wit/events-provider-sms-twilio/deps/secrets-store" }
+"greentic:interfaces-types" = { path = "wit/events-provider-sms-twilio/deps/interfaces-types" }
+"greentic:provider-schema-core" = { path = "wit/events-provider-sms-twilio/deps/provider-schema-core" }

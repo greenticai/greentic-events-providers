@@ -7,12 +7,6 @@ description: Greentic timer/cron event providers
 authors:
   - Greentic Engineering <engineering@greentic.dev>
 license: MIT
-meta:
-  entry_flows:
-    setup: setup
-    requirements: requirements
-  requires_public_base_url: false
-  capabilities: []
 components:
   - id: events-timer-source
     version: 1.0.0
@@ -31,6 +25,20 @@ components:
           inbound: false
           outbound: true
     wasm: components/stubs/events-timer-source.wasm
+  - id: events-provider-timer
+    version: 0.1.0
+    world: greentic:provider/schema-core@1.0.0
+    supports: []
+    profiles:
+      default: stateless
+      supported:
+        - stateless
+    capabilities:
+      wasi:
+        random: false
+        clocks: true
+      host: {}
+    wasm: components/events-provider-timer.wasm
   - id: templating.handlebars
     version: 0.1.0
     world: greentic:flow/templating@1.0.0
@@ -56,27 +64,6 @@ components:
         telemetry:
           scope: node
     wasm: components/templating.handlebars/stub.wasm
-flows:
-  - id: timer-default
-    file: flows/default.ygtc
-    entrypoints:
-      - timer-default
-  - id: setup-default
-    file: flows/setup_default.ygtc
-    entrypoints:
-      - setup-default
-  - id: setup-custom
-    file: flows/setup_custom.ygtc
-    entrypoints:
-      - setup-custom
-  - id: update
-    file: flows/update.ygtc
-    entrypoints:
-      - update
-  - id: remove
-    file: flows/remove.ygtc
-    entrypoints:
-      - remove
 events:
   providers:
     - name: "timer-core"
@@ -88,3 +75,18 @@ events:
         ordering: "none"
         topics:
           - "timer.*"
+extensions:
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      schema_version: 1
+      offers:
+        - cap_id: greentic.cap.events.provider.v1
+          offer_id: events-timer-v1
+          priority: 100
+          provider:
+            component_ref: events-provider-timer
+            op: events.configure
+          requires_setup: false
+          version: 0.4.12

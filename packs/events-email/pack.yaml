@@ -2,13 +2,6 @@ pack_id: greentic.events.email
 version: 0.1.0
 kind: application
 publisher: greentic
-meta:
-  entry_flows:
-    setup: setup
-    requirements: requirements
-    subscriptions: subscriptions
-  requires_public_base_url: false
-  capabilities: []
 components:
 - id: events-email-source
   version: 1.0.0
@@ -195,17 +188,6 @@ components:
         scope: node
   wasm: components/templating.handlebars/stub.wasm
 dependencies: []
-flows:
-- id: email-in-default
-  file: flows/in_default.ygtc
-  tags: []
-  entrypoints:
-  - email-in-default
-- id: email-out-default
-  file: flows/out_default.ygtc
-  tags: []
-  entrypoints:
-  - email-out-default
 events:
   providers:
     - name: "email-in-msgraph"
@@ -241,3 +223,18 @@ events:
         topics:
           - "email.out.gmail"
 assets: []
+extensions:
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      schema_version: 1
+      offers:
+        - cap_id: greentic.cap.events.provider.v1
+          offer_id: events-email-v1
+          priority: 100
+          provider:
+            component_ref: events-provider-email
+            op: events.configure
+          requires_setup: false
+          version: 0.4.12

@@ -12,7 +12,7 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     env:
-      RUSTUP_TOOLCHAIN: 1.90.0
+      RUSTUP_TOOLCHAIN: 1.91.0
     steps:
       - uses: actions/checkout@v4
       - name: Cache cargo bin
@@ -23,7 +23,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.0
           override: true
           components: rustfmt, clippy
       - name: Install wasm32-wasip2 target
@@ -38,8 +38,10 @@ jobs:
         run: cargo binstall greentic-pack --force --locked -y
       - name: Install latest greentic-flow
         run: cargo binstall greentic-flow --force --locked -y
-      - name: Install latest greentic-component
-        run: cargo binstall greentic-component --force --locked -y
+      - name: Install cargo-component (required by greentic-component for component@0.6.0)
+        run: cargo binstall cargo-component --force --locked -y
+      - name: Install latest greentic-component (from source for $ref fix)
+        run: cargo install --git https://github.com/greenticai/greentic-component --bin greentic-component --locked
       - name: Install greentic-provision (skip if cached)
         run: |
           if ! command -v greentic-provision >/dev/null 2>&1; then
@@ -50,7 +52,7 @@ jobs:
           greentic-pack --version
           greentic-flow --version
           greentic-component --version
-          greentic-provision --version
+          greentic-provision --help | head -1 || true
       - name: Local check (fmt + clippy + test + packs)
         run: PACK_DEBUG=1 ci/local_check.sh
 
@@ -78,7 +80,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.0
           override: true
       - name: Run live tests (skips internally if secrets missing)
         run: |

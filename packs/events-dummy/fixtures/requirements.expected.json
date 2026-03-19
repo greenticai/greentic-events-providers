@@ -1,8 +1,0 @@
-{
-  "requirements": {
-    "config_keys": [],
-    "secret_keys": [],
-    "webhook_required": false,
-    "subscriptions_required": false
-  }
-}
