@@ -1,0 +1,84 @@
+{
+  "$schema": "https://greentic-ai.github.io/greentic-component/schemas/v1/component.manifest.schema.json",
+  "artifacts": {
+    "component_wasm": "events-provider-email-sendgrid.wasm"
+  },
+  "capabilities": {
+    "host": {
+      "messaging": {
+        "inbound": false,
+        "outbound": false
+      },
+      "http": {
+        "client": true,
+        "server": false
+      },
+      "secrets": {
+        "required": []
+      },
+      "telemetry": {
+        "scope": "node"
+      }
+    },
+    "wasi": {
+      "clocks": true,
+      "filesystem": {
+        "mode": "none",
+        "mounts": []
+      },
+      "random": true
+    }
+  },
+  "config_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": true,
+    "properties": {},
+    "title": "events-provider-email-sendgrid config",
+    "type": "object"
+  },
+  "default_operation": "publish",
+  "describe_export": "describe",
+  "hashes": {
+    "component_wasm": "blake3:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "id": "events-provider-email-sendgrid",
+  "limits": {
+    "memory_mb": 128,
+    "wall_time_ms": 5000
+  },
+  "name": "events-provider-email-sendgrid",
+  "operations": [
+    {
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object"
+      },
+      "name": "publish",
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object"
+      }
+    },
+    {
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object"
+      },
+      "name": "ingest_http",
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object"
+      }
+    }
+  ],
+  "profiles": {
+    "default": "stateless",
+    "supported": [
+      "stateless"
+    ]
+  },
+  "secret_requirements": [],
+  "supports": [],
+  "version": "0.1.0",
+  "world": "greentic:provider/schema-core@1.0.0"
+}

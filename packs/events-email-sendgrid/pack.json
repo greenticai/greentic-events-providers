@@ -2,13 +2,7 @@
   "id": "greentic.events.email.sendgrid",
   "version": "0.1.0",
   "meta": {
-    "entry_flows": {
-      "setup": "setup",
-      "requirements": "requirements",
-      "subscriptions": "subscriptions"
-    },
     "requires_public_base_url": true,
-    "capabilities": []
-  },
-  "flows": []
+    "capabilities": ["provisioning:none"]
+  }
 }

@@ -1,0 +1,12 @@
+[package]
+name = "provider-common"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ciborium.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2 = "0.10"
+thiserror.workspace = true

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/provider-common",
     "crates/provider-core",
     "crates/provider-webhook",
     "crates/provider-email",
@@ -19,7 +20,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.91"
 version = "0.4.12"
 
 [workspace.dependencies]
@@ -37,6 +38,7 @@ serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"
 serde_json = "1"
 serde_yaml_bw = {package="serde_yaml_gtc", version="2.5.2"}
+sha2 = "0.10"
 tempfile = "3"
 thiserror = "2"
 uuid = { version = "1", features = ["v4", "v5"] }

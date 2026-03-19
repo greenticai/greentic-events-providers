@@ -4,13 +4,6 @@ kind: application
 publisher: greentic
 name: greentic.events.email.sendgrid
 description: Greentic Email event providers (SendGrid Inbound Parse)
-meta:
-  entry_flows:
-    setup: setup
-    requirements: requirements
-    subscriptions: subscriptions
-  requires_public_base_url: true
-  capabilities: []
 components:
 - id: events-email-source
   version: 1.0.0
@@ -197,37 +190,6 @@ components:
         scope: node
   wasm: components/templating.handlebars/stub.wasm
 dependencies: []
-flows:
-- id: email-in-default
-  file: flows/in_default.ygtc
-  tags: []
-  entrypoints:
-  - email-in-default
-- id: email-out-default
-  file: flows/out_default.ygtc
-  tags: []
-  entrypoints:
-  - email-out-default
-- id: setup-default
-  file: flows/setup_default.ygtc
-  tags: []
-  entrypoints:
-  - setup-default
-- id: setup-custom
-  file: flows/setup_custom.ygtc
-  tags: []
-  entrypoints:
-  - setup-custom
-- id: update
-  file: flows/update.ygtc
-  tags: []
-  entrypoints:
-  - update
-- id: remove
-  file: flows/remove.ygtc
-  tags: []
-  entrypoints:
-  - remove
 schemas:
 - path: schemas/events/email/sendgrid/config.schema.json
 assets:
@@ -243,6 +205,20 @@ events:
         topics:
           - "email.in.sendgrid.*"
 extensions:
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      schema_version: 1
+      offers:
+        - cap_id: greentic.cap.events.provider.v1
+          offer_id: events-email-sendgrid-v1
+          priority: 100
+          provider:
+            component_ref: events-provider-email-sendgrid
+            op: events.configure
+          requires_setup: false
+          version: 0.4.12
   greentic.provider-extension.v1:
     kind: greentic.provider-extension.v1
     version: 1.0.0

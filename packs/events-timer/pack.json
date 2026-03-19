@@ -2,12 +2,7 @@
   "id": "greentic.events.timer",
   "version": "0.1.0",
   "meta": {
-    "entry_flows": {
-      "setup": "setup",
-      "requirements": "requirements"
-    },
     "requires_public_base_url": false,
-    "capabilities": []
-  },
-  "flows": []
+    "capabilities": ["provisioning:none"]
+  }
 }

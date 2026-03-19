@@ -56,6 +56,25 @@ for pack in "${PACKS[@]}"; do
     echo "Missing pack.json for ${pack_dir}" >&2
     exit 1
   fi
+
+  # Check for provisioning:none capability first (skip setup validation)
+  has_no_setup="$(PACK_DIR="${pack_dir}" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+pack_json = Path(os.environ["PACK_DIR"]) / "pack.json"
+data = json.loads(pack_json.read_text())
+caps = data.get("meta", {}).get("capabilities", [])
+print("yes" if "provisioning:none" in caps else "no")
+PY
+)"
+  if [ "${has_no_setup}" = "yes" ]; then
+    echo "Pack ${pack} has provisioning:none capability, skipping setup validation."
+    continue
+  fi
+
+  # For packs with setup flows, check required fixtures
   if [ ! -f "${requirements_expected}" ]; then
     echo "Missing requirements.expected.json for ${pack}" >&2
     exit 1
@@ -81,22 +100,8 @@ print("yes" if setup else "no")
 PY
 )"
   if [ "${has_setup}" != "yes" ]; then
-    has_no_setup="$(PACK_DIR="${pack_dir}" python3 - <<'PY'
-import json
-import os
-from pathlib import Path
-
-pack_json = Path(os.environ["PACK_DIR"]) / "pack.json"
-data = json.loads(pack_json.read_text())
-caps = data.get("meta", {}).get("capabilities", [])
-print("yes" if "provisioning:none" in caps else "no")
-PY
-)"
-    if [ "${has_no_setup}" != "yes" ]; then
-      echo "Pack ${pack} has no setup entry but is missing provisioning:none capability." >&2
-      exit 1
-    fi
-    continue
+    echo "Pack ${pack} has no setup entry and no provisioning:none capability." >&2
+    exit 1
   fi
 
   requirements_actual="${TMP_DIR}/${pack}.requirements.json"

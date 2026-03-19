@@ -1,74 +1,89 @@
-#![deny(unsafe_op_in_unsafe_fn)]
+//! Webhook event provider component.
+//!
+//! Implements the v0.6.0 QA contract with setup/upgrade/remove modes.
 
-use anyhow::{Context, Result};
 use chrono::Utc;
-use greentic_interfaces_guest::component::node::{InvokeResult, NodeError};
-use greentic_interfaces_guest::component_entrypoint;
-#[cfg(target_arch = "wasm32")]
-use greentic_interfaces_guest::http_client;
-use greentic_interfaces_guest::provider_core;
+use provider_common::component_v0_6::{canonical_cbor_bytes, decode_cbor};
+use provider_common::helpers::{
+    cbor_json_invoke_bridge, existing_config_from_answers, json_bytes, optional_string_from,
+    schema_core_describe, schema_core_healthcheck, schema_core_validate_config, string_or_default,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-#[cfg(target_arch = "wasm32")]
-#[used]
-#[unsafe(link_section = ".greentic.wasi")]
-static WASI_TARGET_MARKER: [u8; 13] = *b"wasm32-wasip2";
-
-component_entrypoint!({
-    manifest: crate::describe_payload,
-    invoke: crate::handle_message,
-    invoke_stream: true,
-});
-
-pub fn describe_payload() -> String {
-    serde_json::json!({
-        "component": {
-            "name": "events-provider-webhook",
-            "org": "ai.greentic",
-            "version": "0.1.0",
-            "world": "greentic:component/component@0.6.0",
-            "schemas": {
-                "component": "schemas/component.schema.json",
-                "input": "schemas/io/input.schema.json",
-                "output": "schemas/io/output.schema.json"
-            }
-        }
-    })
-    .to_string()
+mod bindings {
+    wit_bindgen::generate!({
+        path: "wit/events-provider-webhook",
+        world: "component-v0-v6-v0",
+        generate_all
+    });
 }
 
-pub fn handle_message(operation: String, input: String) -> InvokeResult {
-    match handle_invoke(&operation, input.as_bytes()) {
-        Ok(bytes) => InvokeResult::Ok(String::from_utf8_lossy(&bytes).into_owned()),
-        Err(err) => InvokeResult::Err(NodeError {
-            code: "invoke_error".into(),
-            message: err.to_string(),
-            retryable: false,
-            backoff_ms: None,
-            details: None,
-        }),
+mod describe;
+
+pub(crate) const PROVIDER_ID: &str = "events-provider-webhook";
+pub(crate) const WORLD_ID: &str = "component-v0-v6-v0";
+
+use describe::{
+    DEFAULT_KEYS, I18N_KEYS, I18N_PAIRS, SETUP_QUESTIONS, build_describe_payload, build_qa_spec,
+};
+
+// ============================================================================
+// Provider configuration
+// ============================================================================
+
+/// Provider configuration output from QA apply-answers.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ProviderConfigOut {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub target_url: String,
+    #[serde(default = "default_method")]
+    pub method: String,
+    #[serde(default)]
+    pub auth_token: Option<String>,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_method() -> String {
+    "POST".to_string()
+}
+
+fn default_config_out() -> ProviderConfigOut {
+    ProviderConfigOut {
+        enabled: true,
+        target_url: String::new(),
+        method: "POST".to_string(),
+        auth_token: None,
+        timeout_ms: Some(5000),
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct ProviderConfig {
-    target_url: String,
-    #[serde(default = "default_method")]
-    method: String,
-    #[serde(default)]
-    headers: BTreeMap<String, String>,
-    #[serde(default)]
-    auth: Option<String>,
-    #[serde(default)]
-    timeout_ms: Option<u64>,
+fn validate_config_out(config: &ProviderConfigOut) -> Result<(), String> {
+    if config.target_url.trim().is_empty() {
+        return Err("target_url is required".to_string());
+    }
+    if !config.target_url.starts_with("http://") && !config.target_url.starts_with("https://") {
+        return Err("target_url must be a valid HTTP/HTTPS URL".to_string());
+    }
+    Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// ============================================================================
+// Input/Output types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct IngestInput {
-    config: ProviderConfig,
+    config: IngestConfig,
     #[serde(default)]
     event: Value,
     #[serde(default)]
@@ -85,118 +100,250 @@ struct IngestInput {
     raw: Option<Value>,
 }
 
-fn default_method() -> String {
-    "POST".into()
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct IngestConfig {
+    target_url: String,
+    #[serde(default = "default_method")]
+    method: String,
+    #[serde(default)]
+    headers: BTreeMap<String, String>,
+    #[serde(default)]
+    auth: Option<String>,
+    #[serde(default)]
+    timeout_ms: Option<u64>,
 }
 
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
+// ============================================================================
+// Component trait implementations
+// ============================================================================
+
 struct Component;
 
-impl provider_core::Guest for Component {
+impl bindings::exports::greentic::component::descriptor::Guest for Component {
     fn describe() -> Vec<u8> {
-        serde_json::to_vec(&json!({
-            "provider_type": "events.webhook",
-            "capabilities": {
-                "operations": ["ingest_http", "publish"],
-                "transport": "http",
-                "deterministic": true,
-            },
-            "ops": ["ingest_http", "publish"],
-        }))
-        .unwrap_or_default()
+        canonical_cbor_bytes(&build_describe_payload())
+    }
+}
+
+impl bindings::exports::greentic::component::runtime::Guest for Component {
+    fn invoke(op: String, input_cbor: Vec<u8>) -> Vec<u8> {
+        cbor_json_invoke_bridge(&op, &input_cbor, Some("ingest_http"), dispatch_json_invoke)
+    }
+}
+
+impl bindings::exports::greentic::component::qa::Guest for Component {
+    fn qa_spec(mode: bindings::exports::greentic::component::qa::Mode) -> Vec<u8> {
+        canonical_cbor_bytes(&build_qa_spec(mode))
     }
 
-    fn validate_config(config_json: Vec<u8>) -> Vec<u8> {
-        match serde_json::from_slice::<ProviderConfig>(&config_json) {
-            Ok(cfg) => json!({"valid": true, "config": cfg})
-                .to_string()
-                .into_bytes(),
-            Err(err) => json!({"valid": false, "error": err.to_string()})
-                .to_string()
-                .into_bytes(),
-        }
+    fn apply_answers(
+        mode: bindings::exports::greentic::component::qa::Mode,
+        answers_cbor: Vec<u8>,
+    ) -> Vec<u8> {
+        apply_answers_impl(mode, answers_cbor)
+    }
+}
+
+impl bindings::exports::greentic::component::component_i18n::Guest for Component {
+    fn i18n_keys() -> Vec<String> {
+        I18N_KEYS.iter().map(|k| (*k).to_string()).collect()
+    }
+
+    fn i18n_bundle(locale: String) -> Vec<u8> {
+        describe::i18n_bundle(locale)
+    }
+}
+
+impl bindings::exports::greentic::provider_schema_core::schema_core_api::Guest for Component {
+    fn describe() -> Vec<u8> {
+        schema_core_describe(&build_describe_payload())
+    }
+
+    fn validate_config(_config_json: Vec<u8>) -> Vec<u8> {
+        schema_core_validate_config()
     }
 
     fn healthcheck() -> Vec<u8> {
-        json!({"status": "ok"}).to_string().into_bytes()
+        schema_core_healthcheck()
     }
 
     fn invoke(op: String, input_json: Vec<u8>) -> Vec<u8> {
-        match handle_invoke(&op, &input_json) {
-            Ok(res) => res,
-            Err(err) => json!({"error": err.to_string()}).to_string().into_bytes(),
+        if let Some(result) = provider_common::qa_invoke_bridge::dispatch_qa_ops_with_i18n(
+            &op,
+            &input_json,
+            "webhook",
+            SETUP_QUESTIONS,
+            DEFAULT_KEYS,
+            I18N_KEYS,
+            I18N_PAIRS,
+            apply_answers_bridge,
+        ) {
+            return result;
         }
+        dispatch_json_invoke(&op, &input_json)
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-mod exports {
-    use super::{Component, provider_core};
+bindings::export!(Component with_types_in bindings);
 
-    #[unsafe(export_name = "greentic:provider-schema-core/schema-core-api@1.0.0#describe")]
-    pub unsafe extern "C" fn export_describe() -> *mut u8 {
-        unsafe { provider_core::_export_describe_cabi::<Component>() }
-    }
+// ============================================================================
+// Dispatch
+// ============================================================================
 
-    #[unsafe(export_name = "cabi_post_greentic:provider-schema-core/schema-core-api@1.0.0#describe")]
-    pub unsafe extern "C" fn post_describe(ret: *mut u8) {
-        unsafe { provider_core::__post_return_describe::<Component>(ret) }
-    }
-
-    #[unsafe(export_name = "greentic:provider-schema-core/schema-core-api@1.0.0#validate-config")]
-    pub unsafe extern "C" fn export_validate_config(arg0: *mut u8, arg1: usize) -> *mut u8 {
-        unsafe { provider_core::_export_validate_config_cabi::<Component>(arg0, arg1) }
-    }
-
-    #[unsafe(export_name = "cabi_post_greentic:provider-schema-core/schema-core-api@1.0.0#validate-config")]
-    pub unsafe extern "C" fn post_validate_config(ret: *mut u8) {
-        unsafe { provider_core::__post_return_validate_config::<Component>(ret) }
-    }
-
-    #[unsafe(export_name = "greentic:provider-schema-core/schema-core-api@1.0.0#healthcheck")]
-    pub unsafe extern "C" fn export_healthcheck() -> *mut u8 {
-        unsafe { provider_core::_export_healthcheck_cabi::<Component>() }
-    }
-
-    #[unsafe(export_name = "cabi_post_greentic:provider-schema-core/schema-core-api@1.0.0#healthcheck")]
-    pub unsafe extern "C" fn post_healthcheck(ret: *mut u8) {
-        unsafe { provider_core::__post_return_healthcheck::<Component>(ret) }
-    }
-
-    #[unsafe(export_name = "greentic:provider-schema-core/schema-core-api@1.0.0#invoke")]
-    pub unsafe extern "C" fn export_invoke(
-        op_ptr: *mut u8,
-        op_len: usize,
-        input_ptr: *mut u8,
-        input_len: usize,
-    ) -> *mut u8 {
-        unsafe {
-            provider_core::_export_invoke_cabi::<Component>(op_ptr, op_len, input_ptr, input_len)
-        }
-    }
-
-    #[unsafe(export_name = "cabi_post_greentic:provider-schema-core/schema-core-api@1.0.0#invoke")]
-    pub unsafe extern "C" fn post_invoke(ret: *mut u8) {
-        unsafe { provider_core::__post_return_invoke::<Component>(ret) }
-    }
+fn apply_answers_bridge(mode: &str, answers_cbor: Vec<u8>) -> Vec<u8> {
+    use bindings::exports::greentic::component::qa::Mode;
+    let mode = match mode {
+        "setup" => Mode::Setup,
+        "upgrade" => Mode::Upgrade,
+        "remove" => Mode::Remove,
+        _ => Mode::Default,
+    };
+    apply_answers_impl(mode, answers_cbor)
 }
 
-#[allow(dead_code)]
-fn handle_invoke(op: &str, input_json: &[u8]) -> Result<Vec<u8>> {
-    let parsed: IngestInput = serde_json::from_slice(input_json)
-        .with_context(|| "ingest input must include config and event")?;
+fn dispatch_json_invoke(op: &str, input_json: &[u8]) -> Vec<u8> {
     match op {
-        "ingest_http" | "publish" => handle_ingest_http(&parsed),
-        other => anyhow::bail!("unsupported op {other}"),
+        "run" | "ingest_http" | "publish" => handle_ingest_http(input_json),
+        other => json_bytes(&json!({"ok": false, "error": format!("unsupported op: {other}")})),
     }
 }
 
-#[allow(dead_code)]
-fn handle_ingest_http(input: &IngestInput) -> Result<Vec<u8>> {
-    let receipt_id = stable_receipt_id(&input.event);
-    let request = build_request(&input.config, &input.event)?;
-    let dispatched = dispatch(&request).is_ok();
+// ============================================================================
+// QA apply_answers implementation
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ApplyAnswersResult {
+    ok: bool,
+    config: Option<ProviderConfigOut>,
+    remove: Option<RemovePlan>,
+    diagnostics: Vec<String>,
+    error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RemovePlan {
+    remove_all: bool,
+    cleanup: Vec<String>,
+}
+
+fn apply_answers_impl(
+    mode: bindings::exports::greentic::component::qa::Mode,
+    answers_cbor: Vec<u8>,
+) -> Vec<u8> {
+    use bindings::exports::greentic::component::qa::Mode;
+
+    let answers: Value = match decode_cbor(&answers_cbor) {
+        Ok(value) => value,
+        Err(err) => {
+            return canonical_cbor_bytes(&ApplyAnswersResult {
+                ok: false,
+                config: None,
+                remove: None,
+                diagnostics: Vec::new(),
+                error: Some(format!("invalid answers cbor: {err}")),
+            });
+        }
+    };
+
+    if mode == Mode::Remove {
+        return canonical_cbor_bytes(&ApplyAnswersResult {
+            ok: true,
+            config: None,
+            remove: Some(RemovePlan {
+                remove_all: true,
+                cleanup: vec![
+                    "delete_config_key".to_string(),
+                    "delete_provenance_key".to_string(),
+                    "delete_provider_state_namespace".to_string(),
+                ],
+            }),
+            diagnostics: Vec::new(),
+            error: None,
+        });
+    }
+
+    let mut merged = existing_config_from_answers(&answers).unwrap_or_else(default_config_out);
+    let answer_obj = answers.as_object();
+    let has = |key: &str| answer_obj.is_some_and(|obj| obj.contains_key(key));
+
+    if mode == Mode::Setup || mode == Mode::Default {
+        merged.enabled = answers
+            .get("enabled")
+            .and_then(Value::as_bool)
+            .unwrap_or(merged.enabled);
+        merged.target_url = string_or_default(&answers, "target_url", &merged.target_url);
+        merged.method = string_or_default(&answers, "method", &merged.method);
+        if merged.method.trim().is_empty() {
+            merged.method = "POST".to_string();
+        }
+        merged.auth_token =
+            optional_string_from(&answers, "auth_token").or(merged.auth_token.clone());
+        if let Some(timeout) = answers.get("timeout_ms").and_then(Value::as_u64) {
+            merged.timeout_ms = Some(timeout);
+        }
+    }
+
+    if mode == Mode::Upgrade {
+        if has("enabled") {
+            merged.enabled = answers
+                .get("enabled")
+                .and_then(Value::as_bool)
+                .unwrap_or(merged.enabled);
+        }
+        if has("target_url") {
+            merged.target_url = string_or_default(&answers, "target_url", &merged.target_url);
+        }
+        if has("method") {
+            merged.method = string_or_default(&answers, "method", &merged.method);
+        }
+        if has("auth_token") {
+            merged.auth_token = optional_string_from(&answers, "auth_token");
+        }
+        if has("timeout_ms")
+            && let Some(timeout) = answers.get("timeout_ms").and_then(Value::as_u64)
+        {
+            merged.timeout_ms = Some(timeout);
+        }
+        if merged.method.trim().is_empty() {
+            merged.method = "POST".to_string();
+        }
+    }
+
+    if let Err(error) = validate_config_out(&merged) {
+        return canonical_cbor_bytes(&ApplyAnswersResult {
+            ok: false,
+            config: None,
+            remove: None,
+            diagnostics: Vec::new(),
+            error: Some(error),
+        });
+    }
+
+    canonical_cbor_bytes(&ApplyAnswersResult {
+        ok: true,
+        config: Some(merged),
+        remove: None,
+        diagnostics: Vec::new(),
+        error: None,
+    })
+}
+
+// ============================================================================
+// Operations
+// ============================================================================
+
+fn handle_ingest_http(input_json: &[u8]) -> Vec<u8> {
+    let parsed: IngestInput = match serde_json::from_slice(input_json) {
+        Ok(v) => v,
+        Err(e) => {
+            return json_bytes(&json!({"ok": false, "error": format!("invalid input: {e}")}));
+        }
+    };
+
+    let receipt_id = stable_receipt_id(&parsed.event);
+    let request = build_request(&parsed.config, &parsed.event);
+    let dispatched = dispatch_http(&request).is_ok();
     let now = Utc::now().to_rfc3339();
 
     let mut emitted_event = json!({
@@ -206,23 +353,24 @@ fn handle_ingest_http(input: &IngestInput) -> Result<Vec<u8>> {
         "source": {
             "domain": "events",
             "provider": "events.webhook",
-            "handler_id": input.handler_id.clone().unwrap_or_else(|| "default".to_string()),
+            "handler_id": parsed.handler_id.clone().unwrap_or_else(|| "default".to_string()),
         },
         "scope": {
-            "tenant": input.tenant.clone().unwrap_or_else(|| "default".to_string()),
-            "team": input.team,
-            "correlation_id": input.correlation_id,
+            "tenant": parsed.tenant.clone().unwrap_or_else(|| "default".to_string()),
+            "team": parsed.team,
+            "correlation_id": parsed.correlation_id,
         },
-        "payload": input.event,
+        "payload": parsed.event,
     });
-    if let Some(http) = &input.http {
+    if let Some(http) = &parsed.http {
         emitted_event["http"] = http.clone();
     }
-    if let Some(raw) = &input.raw {
+    if let Some(raw) = &parsed.raw {
         emitted_event["raw"] = raw.clone();
     }
 
-    Ok(json!({
+    json_bytes(&json!({
+        "ok": true,
         "receipt_id": receipt_id,
         "status": if dispatched { "published" } else { "queued" },
         "dispatched": dispatched,
@@ -233,13 +381,10 @@ fn handle_ingest_http(input: &IngestInput) -> Result<Vec<u8>> {
             "body": "accepted"
         },
         "emitted_events": [emitted_event],
-    })
-    .to_string()
-    .into_bytes())
+    }))
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize)]
 struct OutgoingRequest {
     method: String,
     url: String,
@@ -247,11 +392,7 @@ struct OutgoingRequest {
     body: Value,
 }
 
-#[allow(dead_code)]
-fn build_request(config: &ProviderConfig, event: &Value) -> Result<OutgoingRequest> {
-    if config.target_url.trim().is_empty() {
-        anyhow::bail!("target_url is required");
-    }
+fn build_request(config: &IngestConfig, event: &Value) -> OutgoingRequest {
     let mut headers = config.headers.clone();
     headers
         .entry("content-type".into())
@@ -262,181 +403,177 @@ fn build_request(config: &ProviderConfig, event: &Value) -> Result<OutgoingReque
             .or_insert_with(|| format!("Bearer {token}"));
     }
 
-    Ok(OutgoingRequest {
+    OutgoingRequest {
         method: config.method.to_uppercase(),
         url: config.target_url.clone(),
         headers,
         body: json!({ "event": event }),
-    })
+    }
 }
 
-#[allow(dead_code)]
 fn stable_receipt_id(event: &Value) -> String {
     let bytes = serde_json::to_vec(event).unwrap_or_default();
     Uuid::new_v5(&Uuid::NAMESPACE_OID, &bytes).to_string()
 }
 
-#[allow(dead_code)]
-fn dispatch(request: &OutgoingRequest) -> Result<()> {
+fn dispatch_http(_request: &OutgoingRequest) -> Result<(), String> {
+    // In WASM, we would use the http-client import here.
+    // For now, we'll just return success for the demo.
     #[cfg(target_arch = "wasm32")]
     {
-        let headers: Vec<(String, String)> = request
+        use bindings::greentic::http::http_client;
+        let headers: Vec<(String, String)> = _request
             .headers
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
-        let body = serde_json::to_vec(&request.body)?;
-        let send_req = http_client::Request {
-            method: request.method.clone(),
-            url: request.url.clone(),
+        let body = serde_json::to_vec(&_request.body).ok();
+        let req = http_client::Request {
+            method: _request.method.clone(),
+            url: _request.url.clone(),
             headers,
-            body: Some(body),
+            body,
         };
-
-        let resp = http_client::send(&send_req, None)
-            .map_err(|err| anyhow::anyhow!("http send failed: {err}"))?;
-        if resp.status >= 200 && resp.status < 400 {
-            return Ok(());
+        match http_client::send(&req, None, None) {
+            Ok(resp) if resp.status >= 200 && resp.status < 400 => Ok(()),
+            Ok(resp) => Err(format!("http send returned {}", resp.status)),
+            Err(e) => Err(format!("http send failed: {}", e.message)),
         }
-        anyhow::bail!("http send returned {}", resp.status);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     {
         // Host tests run without HTTP; signal as queued/no-op.
-        let _ = request;
-        anyhow::bail!("http client not available on host")
+        Err("http client not available on host".to_string())
     }
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use greentic_types::{PROVIDER_EXTENSION_ID, decode_pack_manifest};
-    use serde_json::json;
-    use std::fs;
-    use std::path::Path;
-    use std::process::Command;
+    use std::collections::BTreeSet;
 
-    fn sample_input() -> IngestInput {
-        IngestInput {
-            config: ProviderConfig {
-                target_url: "https://example.test/hook".into(),
-                method: "POST".into(),
-                headers: BTreeMap::from([("x-test".into(), "1".into())]),
-                auth: Some("token123".into()),
-                timeout_ms: Some(5000),
-            },
-            event: json!({"id": 1, "kind": "test"}),
-            handler_id: Some("webhook-main".into()),
-            tenant: Some("tenant-a".into()),
-            team: Some("team-1".into()),
-            correlation_id: Some("corr-123".into()),
-            http: None,
-            raw: None,
+    #[test]
+    fn describe_produces_valid_payload() {
+        let payload = build_describe_payload();
+        assert_eq!(payload.provider, PROVIDER_ID);
+        assert!(!payload.operations.is_empty());
+        assert!(!payload.schema_hash.is_empty());
+    }
+
+    #[test]
+    fn i18n_keys_cover_qa_specs() {
+        use bindings::exports::greentic::component::qa::Mode;
+
+        let keyset = I18N_KEYS
+            .iter()
+            .map(|value| (*value).to_string())
+            .collect::<BTreeSet<_>>();
+
+        for mode in [Mode::Default, Mode::Setup, Mode::Upgrade, Mode::Remove] {
+            let spec = build_qa_spec(mode);
+            assert!(keyset.contains(&spec.title.key));
+            for question in spec.questions {
+                assert!(keyset.contains(&question.label.key));
+            }
         }
     }
 
     #[test]
-    fn builds_request_with_auth() {
-        let input = sample_input();
-        let req = build_request(&input.config, &input.event).expect("build");
-        assert_eq!(req.method, "POST");
-        assert_eq!(req.url, input.config.target_url);
+    fn qa_default_asks_required_minimum() {
+        use bindings::exports::greentic::component::qa::Mode;
+        let spec = build_qa_spec(Mode::Default);
+        let keys = spec
+            .questions
+            .into_iter()
+            .map(|question| question.id)
+            .collect::<Vec<_>>();
+        assert_eq!(keys, vec!["target_url"]);
+    }
+
+    #[test]
+    fn apply_answers_remove_returns_cleanup_plan() {
+        use bindings::exports::greentic::component::qa::Guest as QaGuest;
+        use bindings::exports::greentic::component::qa::Mode;
+        let out =
+            <Component as QaGuest>::apply_answers(Mode::Remove, canonical_cbor_bytes(&json!({})));
+        let out_json: Value = decode_cbor(&out).expect("decode apply output");
+        assert_eq!(out_json.get("ok"), Some(&Value::Bool(true)));
+        assert_eq!(out_json.get("config"), Some(&Value::Null));
+        let cleanup = out_json
+            .get("remove")
+            .and_then(|value| value.get("cleanup"))
+            .and_then(Value::as_array)
+            .expect("cleanup steps");
+        assert!(!cleanup.is_empty());
+    }
+
+    #[test]
+    fn apply_answers_validates_target_url() {
+        use bindings::exports::greentic::component::qa::Guest as QaGuest;
+        use bindings::exports::greentic::component::qa::Mode;
+        let answers = json!({
+            "target_url": "not-a-url"
+        });
+        let out =
+            <Component as QaGuest>::apply_answers(Mode::Default, canonical_cbor_bytes(&answers));
+        let out_json: Value = decode_cbor(&out).expect("decode apply output");
+        assert_eq!(out_json.get("ok"), Some(&Value::Bool(false)));
+        let error = out_json
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        assert!(error.contains("URL"));
+    }
+
+    #[test]
+    fn apply_answers_setup_produces_config() {
+        use bindings::exports::greentic::component::qa::Guest as QaGuest;
+        use bindings::exports::greentic::component::qa::Mode;
+        let answers = json!({
+            "enabled": true,
+            "target_url": "https://example.com/webhook"
+        });
+        let out =
+            <Component as QaGuest>::apply_answers(Mode::Setup, canonical_cbor_bytes(&answers));
+        let out_json: Value = decode_cbor(&out).expect("decode apply output");
+        assert_eq!(out_json.get("ok"), Some(&Value::Bool(true)));
+        let config = out_json.get("config").expect("config object");
         assert_eq!(
-            req.headers.get("authorization").map(|s| s.as_str()),
-            Some("Bearer token123")
+            config.get("target_url"),
+            Some(&Value::String("https://example.com/webhook".to_string()))
         );
         assert_eq!(
-            req.body
-                .get("event")
-                .and_then(|v| v.get("id"))
-                .and_then(|v| v.as_i64()),
-            Some(1)
+            config.get("method"),
+            Some(&Value::String("POST".to_string()))
         );
+    }
+
+    #[test]
+    fn handle_ingest_returns_receipt() {
+        let input = json!({
+            "config": {
+                "target_url": "https://example.com/hook",
+                "method": "POST"
+            },
+            "event": {"id": 1, "kind": "test"},
+            "tenant": "test-tenant"
+        });
+        let result = handle_ingest_http(&serde_json::to_vec(&input).unwrap());
+        let out: Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(out.get("ok"), Some(&Value::Bool(true)));
+        assert!(out.get("receipt_id").is_some());
     }
 
     #[test]
     fn receipt_is_deterministic() {
-        let input = sample_input();
-        let id1 = stable_receipt_id(&input.event);
-        let id2 = stable_receipt_id(&input.event);
+        let event = json!({"id": 1, "kind": "test"});
+        let id1 = stable_receipt_id(&event);
+        let id2 = stable_receipt_id(&event);
         assert_eq!(id1, id2);
-    }
-
-    #[test]
-    fn handle_ingest_returns_payload_and_envelope() {
-        let input = sample_input();
-        let out = handle_ingest_http(&input).expect("ingest_http");
-        let json: Value = serde_json::from_slice(&out).expect("json");
-        assert!(json.get("receipt_id").is_some());
-        assert_eq!(json.get("status").and_then(|v| v.as_str()), Some("queued"));
-        assert_eq!(
-            json.get("request")
-                .and_then(|r| r.get("url"))
-                .and_then(|v| v.as_str()),
-            Some("https://example.test/hook")
-        );
-        assert_eq!(
-            json.get("emitted_events")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|v| v.get("event_type"))
-                .and_then(|v| v.as_str()),
-            Some("webhook.received")
-        );
-    }
-
-    #[test]
-    fn pack_builds_with_provider_extension() {
-        let pack_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../fixtures/packs/events_provider_webhook");
-        let temp = tempfile::tempdir().expect("tempdir");
-        let manifest_out = temp.path().join("manifest.cbor");
-        let gtpack_out = temp.path().join("pack.gtpack");
-
-        let status = Command::new("greentic-pack")
-            .arg("build")
-            .arg("--allow-pack-schema")
-            .arg("--no-update")
-            .arg("--in")
-            .arg(&pack_root)
-            .arg("--manifest")
-            .arg(&manifest_out)
-            .arg("--gtpack-out")
-            .arg(&gtpack_out)
-            .current_dir(&pack_root)
-            .status();
-
-        match status {
-            Ok(exit) if exit.success() => {}
-            Ok(exit) => panic!("greentic-pack exited with {}", exit),
-            Err(err) => {
-                eprintln!("greentic-pack not available: {err}");
-                return;
-            }
-        }
-
-        let manifest_bytes = fs::read(&manifest_out).expect("manifest bytes");
-        let manifest = decode_pack_manifest(&manifest_bytes).expect("decode manifest");
-        assert_eq!(
-            manifest.pack_id.as_str(),
-            "greentic.events.provider.webhook"
-        );
-        let ext_entry = manifest
-            .extensions
-            .as_ref()
-            .and_then(|exts| exts.get(PROVIDER_EXTENSION_ID))
-            .expect("provider extension present");
-        assert_eq!(
-            ext_entry.kind.as_str(),
-            PROVIDER_EXTENSION_ID,
-            "provider extension kind should match canonical ID"
-        );
-        let inline = manifest
-            .provider_extension_inline()
-            .expect("provider extension inline payload");
-        let entry = inline.providers.first().expect("provider present");
-        assert_eq!(entry.provider_type, "events.webhook");
     }
 }

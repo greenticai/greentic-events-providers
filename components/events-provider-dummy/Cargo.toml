@@ -1,22 +1,18 @@
 [package]
 name = "events-provider-dummy"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.90"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow.workspace = true
-greentic-interfaces-guest = { workspace = true, features = [
-    "provider-core-v1",
-    "state-store",
-    "types-core",
-] }
+provider-common = { path = "../../crates/provider-common" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 uuid.workspace = true
+wit-bindgen.workspace = true
 
 [dev-dependencies]
 blake3.workspace = true
@@ -24,3 +20,16 @@ greentic-types.workspace = true
 serde_cbor.workspace = true
 zip.workspace = true
 tempfile.workspace = true
+
+[package.metadata.component]
+package = "greentic:events-provider-dummy"
+
+[package.metadata.component.target]
+path = "wit/events-provider-dummy"
+world = "component-v0-v6-v0"
+
+[package.metadata.component.target.dependencies]
+"greentic:http" = { path = "wit/events-provider-dummy/deps/http" }
+"greentic:secrets-store" = { path = "wit/events-provider-dummy/deps/secrets-store" }
+"greentic:interfaces-types" = { path = "wit/events-provider-dummy/deps/interfaces-types" }
+"greentic:provider-schema-core" = { path = "wit/events-provider-dummy/deps/provider-schema-core" }

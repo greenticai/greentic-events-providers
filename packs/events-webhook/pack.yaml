@@ -34,6 +34,21 @@ components:
       clocks: false
     host: {}
   wasm: components/events-provider-email.wasm
+- id: events-provider-email-sendgrid
+  version: 0.1.0
+  world: root:component/root
+  supports:
+  - messaging
+  profiles:
+    default: default
+    supported:
+    - default
+  capabilities:
+    wasi:
+      random: false
+      clocks: false
+    host: {}
+  wasm: components/events-provider-email-sendgrid.wasm
 - id: events-provider-sms
   version: 0.1.0
   world: root:component/root
@@ -49,6 +64,21 @@ components:
       clocks: false
     host: {}
   wasm: components/events-provider-sms.wasm
+- id: events-provider-sms-twilio
+  version: 0.1.0
+  world: root:component/root
+  supports:
+  - messaging
+  profiles:
+    default: default
+    supported:
+    - default
+  capabilities:
+    wasi:
+      random: false
+      clocks: false
+    host: {}
+  wasm: components/events-provider-sms-twilio.wasm
 - id: events-provider-timer
   version: 0.1.0
   world: root:component/root
@@ -79,36 +109,36 @@ components:
       clocks: false
     host: {}
   wasm: components/events-provider-webhook.wasm
-- id: events-webhook-source
-  version: 1.0.0
-  world: greentic:events/source@1.0.0
+- id: stub
+  version: 0.1.0
+  world: root:component/root
   supports:
-  - event
+  - messaging
   profiles:
-    default: stateless
+    default: default
     supported:
-    - stateless
+    - default
   capabilities:
     wasi:
       random: false
-      clocks: true
-    host:
-      secrets:
-        required:
-        - key: WEBHOOK_SIGNING_SECRET
-          required: false
-          description: Default signing secret for validating inbound webhook requests
-          scope:
-            env: '{{env}}'
-            tenant: '{{tenant}}'
-          format: text
-      events:
-        inbound: false
-        outbound: true
-      http:
-        client: false
-        server: true
-  wasm: components/stubs/events-webhook-source.wasm
+      clocks: false
+    host: {}
+  wasm: components/stub.wasm
+- id: stubs
+  version: 0.1.0
+  world: root:component/root
+  supports:
+  - messaging
+  profiles:
+    default: default
+    supported:
+    - default
+  capabilities:
+    wasi:
+      random: false
+      clocks: false
+    host: {}
+  wasm: components/stubs/events-email-sink.wasm
 - id: templating.handlebars
   version: 0.1.0
   world: greentic:flow/templating@1.0.0
@@ -135,49 +165,6 @@ components:
         scope: node
   wasm: components/templating.handlebars/stub.wasm
 dependencies: []
-flows:
-- id: webhook-in-custom
-  file: flows/in_custom_template.ygtc
-  tags: []
-  entrypoints:
-  - default
-- id: webhook-in-default
-  file: flows/in_default.ygtc
-  tags: []
-  entrypoints:
-  - webhook-in-default
-- id: setup-default
-  file: flows/setup_default.ygtc
-  tags: []
-  entrypoints:
-  - setup-default
-- id: setup-custom
-  file: flows/setup_custom.ygtc
-  tags: []
-  entrypoints:
-  - setup-custom
-- id: update
-  file: flows/update.ygtc
-  tags: []
-  entrypoints:
-  - update
-- id: remove
-  file: flows/remove.ygtc
-  tags: []
-  entrypoints:
-  - remove
-events:
-  providers:
-  - name: webhook-default
-    kind: source
-    component: events-webhook-source@1.0.0
-    default_flow: flows/in_default.ygtc
-    custom_flow: flows/in_custom_template.ygtc
-    capabilities:
-      transport: webhook
-      reliability: at_least_once
-      topics:
-      - webhook.in.*
 assets: []
 extensions:
   greentic.events.ingress-http.v1:
@@ -189,3 +176,34 @@ extensions:
         method: POST
         op_id: ingest_http
         path: /v1/events/ingress/webhook/{tenant}/{team}/{handler}
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      offers:
+      - cap_id: greentic.cap.events.provider.v1
+        offer_id: events-webhook-v1
+        priority: 100
+        provider:
+          component_ref: events-provider-webhook
+          op: events.configure
+        requires_setup: false
+        version: 0.4.12
+      schema_version: 1
+  greentic.provider-extension.v1:
+    kind: greentic.provider-extension.v1
+    version: 0.1.0
+    inline:
+      providers:
+      - provider_type: events.webhook
+        capabilities:
+        - http
+        - events
+        ops:
+        - ingest_http
+        - publish
+        config_schema_ref: schemas/events/webhook/config.schema.json
+        runtime:
+          component_ref: events-provider-webhook
+          export: schema-core-api
+          world: greentic:provider/schema-core@1.0.0

@@ -1,25 +1,33 @@
 [package]
 name = "events-provider-webhook"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.90"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow.workspace = true
-greentic-interfaces-guest = { workspace = true, features = [
-    "component-node",
-    "provider-core-v1",
-    "http-client",
-    "types-core",
-] }
+chrono.workspace = true
+provider-common = { path = "../../crates/provider-common" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 uuid.workspace = true
-chrono.workspace = true
+wit-bindgen.workspace = true
 
 [dev-dependencies]
 greentic-types.workspace = true
 tempfile.workspace = true
+
+[package.metadata.component]
+package = "greentic:events-provider-webhook"
+
+[package.metadata.component.target]
+path = "wit/events-provider-webhook"
+world = "component-v0-v6-v0"
+
+[package.metadata.component.target.dependencies]
+"greentic:http" = { path = "wit/events-provider-webhook/deps/http" }
+"greentic:secrets-store" = { path = "wit/events-provider-webhook/deps/secrets-store" }
+"greentic:interfaces-types" = { path = "wit/events-provider-webhook/deps/interfaces-types" }
+"greentic:provider-schema-core" = { path = "wit/events-provider-webhook/deps/provider-schema-core" }

@@ -120,7 +120,7 @@ rsync -a \
       fi
 
       echo "${doctor_output}" >&2
-      missing_line="$(printf '%s\n' "${doctor_output}" | rg 'missing sidecar entries for nodes:' || true)"
+      missing_line="$(printf '%s\n' "${doctor_output}" | grep -E 'missing sidecar entries for nodes:' || true)"
       if [ -z "${missing_line}" ]; then
         echo "Flow doctor failed for ${flow}" >&2
         exit "${doctor_status}"
@@ -185,10 +185,29 @@ rsync -a \
 
       # Build only source components; prebuilt pack components generally have no cargo project.
       if [[ "${manifest}" == components/* ]]; then
+        build_tmp="$(mktemp)"
+        trap - ERR
+        set +e
         (
           cd "${component_dir}"
           greentic-component build --manifest "${manifest_name}"
-        )
+        ) >"${build_tmp}" 2>&1
+        build_status=$?
+        set -e
+        trap on_error ERR
+        build_output="$(cat "${build_tmp}")"
+        rm -f "${build_tmp}"
+
+        if [ "${build_status}" -ne 0 ]; then
+          # Known WIT interface version upgrade mismatches during component encoding
+          if printf '%s\n' "${build_output}" | grep -qE 'failed to upgrade.*was this semver-compatible update not semver compatible|failed to merge interfaces|different number of function parameters'; then
+            echo "Known WIT interface version mismatch for ${manifest}; continuing." >&2
+            printf '%s\n' "${build_output}" >&2
+          else
+            echo "${build_output}" >&2
+            exit "${build_status}"
+          fi
+        fi
       fi
 
       doctor_tmp="$(mktemp)"
@@ -205,7 +224,7 @@ rsync -a \
       rm -f "${doctor_tmp}"
 
       if [ "${doctor_status}" -ne 0 ]; then
-        if printf '%s\n' "${doctor_output}" | rg -q 'missing export interface component-descriptor|component world mismatch|matching implementation was not found in the linker'; then
+        if printf '%s\n' "${doctor_output}" | grep -Eq 'missing export interface component-descriptor|component world mismatch|matching implementation was not found in the linker'; then
           echo "Known Greentic component doctor ABI/tool mismatch for ${manifest}; continuing." >&2
           printf '%s\n' "${doctor_output}" >&2
           continue

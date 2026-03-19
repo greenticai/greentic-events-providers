@@ -2,11 +2,9 @@
   "id": "greentic.events.provider.dummy",
   "version": "0.1.0",
   "meta": {
-    "entry_flows": {},
     "requires_public_base_url": false,
     "capabilities": [
       "provisioning:none"
     ]
-  },
-  "flows": []
+  }
 }

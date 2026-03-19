@@ -7,12 +7,6 @@ description: Greentic SMS event providers (Twilio)
 authors:
   - Greentic Engineering <engineering@greentic.dev>
 license: MIT
-meta:
-  entry_flows:
-    setup: setup
-    requirements: requirements
-  requires_public_base_url: true
-  capabilities: []
 components:
   - id: events-sms-source
     version: 1.0.0
@@ -110,31 +104,6 @@ components:
         telemetry:
           scope: node
     wasm: components/templating.handlebars/stub.wasm
-flows:
-  - id: sms-in-default
-    file: flows/in_default.ygtc
-    entrypoints:
-      - sms-in-default
-  - id: sms-out-default
-    file: flows/out_default.ygtc
-    entrypoints:
-      - sms-out-default
-  - id: setup-default
-    file: flows/setup_default.ygtc
-    entrypoints:
-      - setup-default
-  - id: setup-custom
-    file: flows/setup_custom.ygtc
-    entrypoints:
-      - setup-custom
-  - id: update
-    file: flows/update.ygtc
-    entrypoints:
-      - update
-  - id: remove
-    file: flows/remove.ygtc
-    entrypoints:
-      - remove
 schemas:
   - path: schemas/events/sms/config.schema.json
 assets:
@@ -158,6 +127,20 @@ events:
         topics:
           - "sms.out.twilio"
 extensions:
+  greentic.ext.capabilities.v1:
+    kind: greentic.ext.capabilities.v1
+    version: 0.4.12
+    inline:
+      schema_version: 1
+      offers:
+        - cap_id: greentic.cap.events.provider.v1
+          offer_id: events-sms-twilio-v1
+          priority: 100
+          provider:
+            component_ref: events-provider-sms-twilio
+            op: events.configure
+          requires_setup: false
+          version: 0.4.12
   greentic.provider-extension.v1:
     kind: greentic.provider-extension.v1
     version: 1.0.0

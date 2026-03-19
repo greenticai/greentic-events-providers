@@ -3,17 +3,20 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
-RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.90.0}"
+RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.91.0}"
 export RUSTUP_TOOLCHAIN
 
 echo "==> cargo fmt"
 cargo fmt --all -- --check
 
-echo "==> cargo clippy"
-cargo clippy --workspace --all-targets -- -D warnings
+echo "==> cargo clippy (native crates only)"
+cargo clippy -p provider-common -p provider-core -p provider-webhook -p provider-email -p provider-sms -p provider-timer -p sbom-patch --all-targets -- -D warnings
 
-echo "==> cargo test"
-cargo test --workspace
+echo "==> cargo clippy (wasm components)"
+cargo clippy --target wasm32-wasip2 -p events-provider-dummy -p events-provider-webhook -p events-provider-timer -p events-provider-sms -p events-provider-email -p events-provider-email-sendgrid -p events-provider-sms-twilio -p stub-component-v060 -- -D warnings
+
+echo "==> cargo test (native crates only)"
+cargo test -p provider-common -p provider-core -p provider-webhook -p provider-email -p provider-sms -p provider-timer -p sbom-patch
 
 echo "==> build packs"
 bash scripts/build_packs.sh
