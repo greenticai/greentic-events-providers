@@ -21,13 +21,10 @@ jobs:
           path: ~/.cargo/bin
           key: ${{ runner.os }}-cargo-bin-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@1.91.0
         with:
-          toolchain: 1.91.0
-          override: true
           components: rustfmt, clippy
-      - name: Install wasm32-wasip2 target
-        run: rustup target add wasm32-wasip2 --toolchain "${RUSTUP_TOOLCHAIN}"
+          targets: wasm32-wasip2
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@main
       - name: Show toolchain/targets
@@ -78,10 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.91.0
-          override: true
+        uses: dtolnay/rust-toolchain@1.91.0
       - name: Run live tests (skips internally if secrets missing)
         run: |
           features=""
