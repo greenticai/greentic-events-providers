@@ -2,7 +2,7 @@
 
 Date (UTC): 2026-03-19
 Branch: feat/remove-legacy-flow-based-providers
-Commit: 5f84502
+Commit: 62ec71d
 
 ## Input Alerts Reviewed
 - Dependabot alerts: `0`
@@ -16,7 +16,7 @@ Sources:
 - `pr-vulnerable-changes.json`
 
 ## PR Dependency File Review
-Compared against `origin/master...HEAD`, the PR modifies these dependency files:
+Compared against `HEAD~1..HEAD` (CI checkout does not expose `origin/main`), the latest PR commit modifies these dependency files:
 - `Cargo.lock`
 - `Cargo.toml`
 - `components/events-provider-dummy/Cargo.toml`
