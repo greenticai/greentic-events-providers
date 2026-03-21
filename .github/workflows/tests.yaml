@@ -41,7 +41,7 @@ jobs:
       - name: Install cargo-component (required by greentic-component for component@0.6.0)
         run: cargo binstall cargo-component --force --locked -y
       - name: Install latest greentic-component (from source for $ref fix)
-        run: cargo install --git https://github.com/greenticai/greentic-component --bin greentic-component --locked
+        run: cargo install --git https://github.com/greenticai/greentic-component --bin greentic-component --locked --force
       - name: Install greentic-provision (skip if cached)
         run: |
           if ! command -v greentic-provision >/dev/null 2>&1; then
