@@ -24,7 +24,6 @@ jobs:
       RUSTUP_TOOLCHAIN: 1.91.0
       PACK_VERSION: "0.4"
       REGISTRY: ghcr.io
-      OWNER: greentic-ai
       REPO: greentic-packs
     steps:
       - name: Checkout
@@ -77,7 +76,7 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.version }}
           REGISTRY: ${{ env.REGISTRY }}
-          OWNER: ${{ env.OWNER }}
+          OWNER: ${{ github.repository_owner }}
           REPO: ${{ env.REPO }}
           GITHUB_SHA: ${{ github.sha }}
           MAKE_PUBLIC: "true"
