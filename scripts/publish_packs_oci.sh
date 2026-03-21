@@ -119,7 +119,7 @@ print(urllib.parse.quote(os.environ["PKG"], safe=""))
 PY
     )"
     if [ -n "${PKG_ENC}" ]; then
-      VIS_URL="https://api.github.com/user/packages/container/${PKG_ENC}/visibility"
+      VIS_URL="https://api.github.com/orgs/${OWNER}/packages/container/${PKG_ENC}/visibility"
       echo "Setting visibility public for ${OWNER}/${PKG_ENC}"
       echo "Visibility URL: ${VIS_URL}"
       if ! curl -sS -X PATCH \
