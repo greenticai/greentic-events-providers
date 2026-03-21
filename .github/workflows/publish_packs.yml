@@ -21,7 +21,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      RUSTUP_TOOLCHAIN: 1.90.0
+      RUSTUP_TOOLCHAIN: 1.91.0
       PACK_VERSION: "0.4"
       REGISTRY: ghcr.io
       OWNER: greentic-ai
@@ -38,7 +38,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.90.0
+          toolchain: 1.91.0
           override: true
 
       - name: Install wasm32-wasip2 target
