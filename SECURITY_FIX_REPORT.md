@@ -1,39 +1,25 @@
 # Security Fix Report
 
-Date (UTC): 2026-03-19
-Branch: feat/remove-legacy-flow-based-providers
-Commit: 62ec71d
+Date: 2026-03-21 (UTC)
+Branch: `fix/oci-org-greenticai`
 
-## Input Alerts Reviewed
+## Inputs Reviewed
 - Dependabot alerts: `0`
 - Code scanning alerts: `0`
 - New PR dependency vulnerabilities: `0`
 
-Sources:
-- `security-alerts.json`
-- `dependabot-alerts.json`
-- `code-scanning-alerts.json`
-- `pr-vulnerable-changes.json`
+## PR Dependency Change Review
+Compared this branch with `origin/master`:
+- Changed files:
+  - `.github/workflows/publish_packs.yml`
+  - `scripts/publish_packs_oci.sh`
 
-## PR Dependency File Review
-Compared against `HEAD~1..HEAD` (CI checkout does not expose `origin/main`), the latest PR commit modifies these dependency files:
-- `Cargo.lock`
-- `Cargo.toml`
-- `components/events-provider-dummy/Cargo.toml`
-- `components/events-provider-email-sendgrid/Cargo.toml`
-- `components/events-provider-email/Cargo.toml`
-- `components/events-provider-sms-twilio/Cargo.toml`
-- `components/events-provider-sms/Cargo.toml`
-- `components/events-provider-timer/Cargo.toml`
-- `components/events-provider-webhook/Cargo.toml`
-- `crates/provider-common/Cargo.toml`
+No dependency manifests or lockfiles were changed in the PR (`Cargo.toml`, `Cargo.lock`, or other common dependency files).
 
-No new dependency vulnerabilities were reported (`pr-vulnerable-changes.json` is empty).
+## Security Remediation Actions
+- No vulnerable dependencies were identified from provided alerts.
+- No new dependency vulnerabilities were introduced by this PR.
+- No code or dependency changes were required for remediation.
 
-## Remediation Actions
-- No code or dependency changes were required.
-- No vulnerabilities were present in the provided CI security feeds.
-- Attempted to run `cargo audit`, but execution was blocked by CI sandbox rustup write restrictions (`/home/runner/.rustup` read-only), so the report relies on provided alert artifacts.
-
-## Result
-- Security status for this CI run: **clean**.
+## Outcome
+Security review completed. Repository state is unchanged from a dependency-security perspective for this PR.
