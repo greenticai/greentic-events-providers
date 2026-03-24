@@ -20,7 +20,7 @@ Reusable Greentic event providers shipped as WASM components plus packs for `gre
 - `scripts/build_packs.sh` – builds validated `*.gtpack` artifacts via `greentic-pack` (use `cargo binstall greentic-pack --locked`; optionally set `PACK_SERIES=0.4.` in CI to enforce a series).
 - `.github/workflows/publish-packs.yaml` – builds `*.gtpack` with `greentic-pack` and publishes to GHCR on tags.
 - `ci/local_check.sh` – run fmt + clippy + tests + pack build locally (mirrors CI).
-- `.github/workflows/tests.yaml` – CI for fmt/clippy/tests; live tests gated by vars; builds packs.
+- `.github/workflows/ci.yml` – CI for fmt/clippy/tests; live tests gated by vars; builds packs.
 - `.github/workflows/publish-latest-packs.yaml` – publishes latest `*.gtpack` artifacts to GHCR on main.
 
 ## Versioning & constraints
@@ -30,7 +30,10 @@ Reusable Greentic event providers shipped as WASM components plus packs for `gre
 
 ## Developing
 - Build with `cargo build` (workspace).
-- Run tests with `cargo test`.
+- Run native tests with `cargo test`.
+- Run wasm component lint/build through:
+  - [ci/local_check.sh](/home/vgrishkyan/greentic/greentic-events-providers/ci/local_check.sh)
+  - or explicit `cargo clippy --target wasm32-wasip2 ...`
 - Packs are validated/built via `greentic-pack` (0.4.x) into `dist/packs/*.gtpack`; flows remain minimal placeholders but satisfy schema.
 
 ## Secrets workflow
@@ -72,5 +75,7 @@ Integration test harnesses should:
 - Exit with success for skipped providers so CI does not fail when secrets are absent.
 
 ### CI
-- `.github/workflows/tests.yaml` runs unit tests on every push/PR.
+- `.github/workflows/ci.yml` runs unit tests on every push/PR.
 - Live tests run when repository variable `RUN_LIVE_TESTS` is set to `true`; they rely on the secrets above and can make real HTTP calls if `RUN_LIVE_HTTP=true` is also set.
+- The recommended first live-provider path is documented in:
+  - [live_email_provider.md](/home/vgrishkyan/greentic/greentic-events-providers/docs/live_email_provider.md)

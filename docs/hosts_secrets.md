@@ -28,6 +28,8 @@ let req = provider_email::build_send_request(&envelope, &secrets_store)?;
 for evt in req.secret_events.iter() {
     bus.publish(evt.clone())?;
 }
+let oauth = req.oauth.as_ref().expect("email providers should declare oauth hints");
+let token = oauth_service.get_access_token(tenant_ctx.clone(), &oauth.provider_id, oauth.scopes.clone())?;
 host_execute_email(req.payload)?;
 ```
 
