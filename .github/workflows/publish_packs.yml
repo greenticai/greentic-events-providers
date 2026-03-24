@@ -3,7 +3,7 @@ name: Build And Publish Packs OCI
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - "v*"
   pull_request:
@@ -108,7 +108,7 @@ jobs:
   gtpack-publish:
     runs-on: ubuntu-latest
     needs: build-packs
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     env:
       REGISTRY: ghcr.io
       OWNER: greenticai
