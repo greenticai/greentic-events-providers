@@ -206,5 +206,13 @@ fn live_gmail_integration_smoke() -> Result<(), Box<dyn Error>> {
 
     let request = build_send_request(&envelope, &secrets)?;
     assert_eq!(request.provider, EmailProvider::Gmail);
+    assert_eq!(
+        request.oauth,
+        Some(provider_email::EmailOauthHint {
+            provider_id: "gmail-email".into(),
+            flow: "refresh_token".into(),
+            scopes: vec!["https://www.googleapis.com/auth/gmail.send".into()],
+        })
+    );
     Ok(())
 }

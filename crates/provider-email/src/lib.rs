@@ -92,7 +92,15 @@ pub struct OutboundEmail {
 pub struct EmailSendRequest {
     pub provider: EmailProvider,
     pub payload: Value,
+    pub oauth: Option<EmailOauthHint>,
     pub secret_events: Vec<greentic_types::EventEnvelope>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct EmailOauthHint {
+    pub provider_id: String,
+    pub flow: String,
+    pub scopes: Vec<String>,
 }
 
 /// Resolve provider-specific secrets and emit metadata-only events.
@@ -170,6 +178,11 @@ pub fn build_send_request(
                 },
                 "saveToSentItems": false
             }),
+            oauth: Some(EmailOauthHint {
+                provider_id: "msgraph-email".into(),
+                flow: "client_credentials".into(),
+                scopes: vec!["https://graph.microsoft.com/.default".into()],
+            }),
             secret_events,
         }),
         EmailProvider::Gmail => Ok(EmailSendRequest {
@@ -183,6 +196,11 @@ pub fn build_send_request(
                     "bcc": bcc,
                     "from": from_override,
                 }
+            }),
+            oauth: Some(EmailOauthHint {
+                provider_id: "gmail-email".into(),
+                flow: "refresh_token".into(),
+                scopes: vec!["https://www.googleapis.com/auth/gmail.send".into()],
             }),
             secret_events,
         }),
@@ -319,8 +337,52 @@ mod tests {
                 .and_then(|m| m.get("toRecipients"))
                 .is_some()
         );
+        assert_eq!(
+            request.oauth,
+            Some(EmailOauthHint {
+                provider_id: "msgraph-email".into(),
+                flow: "client_credentials".into(),
+                scopes: vec!["https://graph.microsoft.com/.default".into()],
+            })
+        );
         assert_eq!(request.secret_events.len(), 1);
         assert_eq!(request.secret_events[0].topic, "greentic.secrets.put");
+    }
+
+    #[test]
+    fn builds_gmail_send_request_with_oauth_hint() {
+        let payload = json!({
+            "to": ["a@example.com"],
+            "subject": "Hi",
+            "body": "Body"
+        });
+        let event = greentic_types::EventEnvelope {
+            id: greentic_types::EventId::new("evt-2").unwrap(),
+            topic: "email.out.gmail".into(),
+            r#type: "t".into(),
+            source: "s".into(),
+            tenant: sample_tenant(),
+            subject: Some("Hi".into()),
+            time: Utc::now(),
+            correlation_id: None,
+            payload,
+            metadata: BTreeMap::new(),
+        };
+
+        let secrets = StaticSecretProvider::new(BTreeMap::from([
+            ("GMAIL_CLIENT_SECRET".into(), b"secret".to_vec()),
+            ("GMAIL_REFRESH_TOKEN".into(), b"refresh".to_vec()),
+        ]));
+        let request = build_send_request(&event, &secrets).expect("request");
+        assert_eq!(request.provider, EmailProvider::Gmail);
+        assert_eq!(
+            request.oauth,
+            Some(EmailOauthHint {
+                provider_id: "gmail-email".into(),
+                flow: "refresh_token".into(),
+                scopes: vec!["https://www.googleapis.com/auth/gmail.send".into()],
+            })
+        );
     }
 
     #[test]

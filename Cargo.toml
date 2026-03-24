@@ -16,12 +16,21 @@ members = [
     "components/events-provider-sms-twilio",
     "components/stub-component-v060",
 ]
+default-members = [
+    "crates/provider-common",
+    "crates/provider-core",
+    "crates/provider-webhook",
+    "crates/provider-email",
+    "crates/provider-sms",
+    "crates/provider-timer",
+    "crates/sbom-patch",
+]
 resolver = "2"
 
 [workspace.package]
 edition = "2024"
 rust-version = "1.91"
-version = "0.4.12"
+version = "0.4.13"
 
 [workspace.dependencies]
 anyhow = "1"
