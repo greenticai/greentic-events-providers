@@ -5,3 +5,6 @@
 *.gtpack
 *.cbor
 *.sbom.json
+
+# OS
+.DS_Store
