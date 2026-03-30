@@ -1,7 +1,7 @@
 # Security Fix Report
 
-Date: 2026-03-27 (UTC)
-Branch: `chore/sync-toolchain`
+Date: 2026-03-30 (UTC)
+Branch: `feat/codeql`
 
 ## Inputs Reviewed
 - Security alerts JSON:
@@ -12,14 +12,14 @@ Branch: `chore/sync-toolchain`
 ## PR Dependency Change Review
 Commands used:
 - `git diff --name-only HEAD~1..HEAD`
-- `git diff --name-only`
+- `git diff --name-only HEAD~1..HEAD | rg "(Cargo\\.toml|Cargo\\.lock|package\\.json|package-lock\\.json|yarn\\.lock|pnpm-lock\\.yaml|requirements.*\\.txt|Pipfile\\.lock|poetry\\.lock|Gemfile\\.lock|go\\.mod|go\\.sum|pom\\.xml|build\\.gradle|gradle\\.lockfile|composer\\.lock)$"`
 
 Observed changed files:
-- Last commit (`HEAD~1..HEAD`): `rust-toolchain.toml`, `rustfmt.toml`
+- Last commit (`HEAD~1..HEAD`): `.github/workflows/codeql.yml`
 - Uncommitted working tree: `pr-comment.md`
 
 Result:
-- No dependency manifests or lockfiles were changed (`Cargo.toml`, `Cargo.lock`, or other package manager manifests).
+- No dependency manifests or lockfiles were changed in the PR commit.
 - No new dependency vulnerabilities were introduced by PR dependency changes.
 
 ## Remediation Actions
