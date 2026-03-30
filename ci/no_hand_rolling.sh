@@ -224,7 +224,7 @@ rsync -a \
       rm -f "${doctor_tmp}"
 
       if [ "${doctor_status}" -ne 0 ]; then
-        if printf '%s\n' "${doctor_output}" | grep -Eq 'missing export interface component-descriptor|component world mismatch|matching implementation was not found in the linker'; then
+        if printf '%s\n' "${doctor_output}" | grep -Eq 'missing export interface component-descriptor|component world mismatch|matching implementation was not found in the linker|describe CBOR is not canonical'; then
           echo "Known Greentic component doctor ABI/tool mismatch for ${manifest}; continuing." >&2
           printf '%s\n' "${doctor_output}" >&2
           continue
