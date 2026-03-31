@@ -24,7 +24,7 @@ jobs:
       RUSTUP_TOOLCHAIN: 1.91.0
       PACK_VERSION: "0.4"
       REGISTRY: ghcr.io
-      REPO: greentic-packs
+      REPO: packs
     steps:
       - name: Checkout
         uses: actions/checkout@v4

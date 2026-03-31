@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${ROOT_DIR}/dist"
 REGISTRY="${REGISTRY:-ghcr.io}"
 OWNER="${OWNER:-greenticai}"
-REPO="${REPO:-greentic-packs}"
+REPO="${REPO:-packs}"
 SOURCE_ANNOTATION="https://github.com/greenticai/greentic-events-providers"
 GITHUB_SHA="${GITHUB_SHA:-$(git -C "${ROOT_DIR}" rev-parse --verify HEAD)}"
 MAKE_PUBLIC="${MAKE_PUBLIC:-false}"
@@ -80,8 +80,9 @@ fi
 
 for pack in "${PACKS[@]}"; do
   pack_name="$(basename "${pack%.gtpack}")"
-  ref="${REGISTRY}/${OWNER}/${REPO}/${pack_name}:${VERSION_RESOLVED}"
+  ref="${REGISTRY}/${OWNER}/${REPO}/events/${pack_name}:${VERSION_RESOLVED}"
 
+  latest_ref="${REGISTRY}/${OWNER}/${REPO}/events/${pack_name}:latest"
   echo "Pushing ${pack_name} -> ${ref}"
   (
     cd "${DIST_DIR}"
@@ -92,6 +93,8 @@ for pack in "${PACKS[@]}"; do
     --annotation org.opencontainers.image.version="${VERSION_RESOLVED}" \
     --annotation org.opencontainers.image.title="${pack_name}"
   )
+  echo "Tagging ${pack_name} -> ${latest_ref}"
+  oras tag "${ref}" latest
 
   digest=""
   if command -v jq >/dev/null 2>&1 && oras manifest fetch --help 2>&1 | grep -q -- "--descriptor"; then
@@ -109,7 +112,7 @@ for pack in "${PACKS[@]}"; do
   fi
 
   if [ "${MAKE_PUBLIC}" = "true" ] && [ -n "${GHCR_TOKEN}" ]; then
-    PKG="${REPO}/${pack_name}"
+    PKG="${REPO}/events/${pack_name}"
     PKG_ENC="$(
       PKG="${PKG}" python3 - <<'PY' 2>/dev/null || true
 import os
