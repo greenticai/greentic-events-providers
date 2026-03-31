@@ -1,0 +1,3 @@
+Cargo.lock
+Cargo.toml
+scripts/publish_packs_oci.sh

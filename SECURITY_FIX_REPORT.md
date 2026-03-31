@@ -1,7 +1,7 @@
 # Security Fix Report
 
-Date: 2026-03-30 (UTC)
-Branch: `fix/no-hand-rolling-doctor-guard`
+Date: 2026-03-31 (UTC)
+Branch: `fix/oci-publish-path-events-subdir`
 
 ## Inputs Reviewed
 - Security alerts JSON:
@@ -11,22 +11,26 @@ Branch: `fix/no-hand-rolling-doctor-guard`
 
 ## PR Dependency Change Review
 Commands used:
-- `git rev-list --left-right --count @{upstream}...HEAD`
-- `git diff --name-only HEAD~1..HEAD`
-- `git diff --name-only HEAD~1..HEAD | rg "(Cargo\\.toml|Cargo\\.lock|package\\.json|package-lock\\.json|yarn\\.lock|pnpm-lock\\.yaml|requirements.*\\.txt|Pipfile\\.lock|poetry\\.lock|Gemfile\\.lock|go\\.mod|go\\.sum|pom\\.xml|build\\.gradle|gradle\\.lockfile|composer\\.lock)$"`
+- `cat pr-changed-files.txt`
+- `git diff --name-only origin/main...HEAD -- Cargo.toml Cargo.lock '**/Cargo.toml' '**/package*.json' '**/requirements*.txt' '**/poetry.lock' '**/Pipfile*' '**/go.mod' '**/go.sum'`
+- `git diff origin/main...HEAD -- Cargo.toml`
+- `git diff origin/main...HEAD -- Cargo.lock`
 
-Observed changed files:
-- Commits ahead of upstream: `0` (`git rev-list --left-right --count @{upstream}...HEAD` => `0 0`)
-- Last commit (`HEAD~1..HEAD`): `ci/no_hand_rolling.sh`
-- Uncommitted working tree: `pr-comment.md` (non-dependency file)
+Observed dependency file changes in PR scope:
+- `Cargo.toml`: workspace package version changed from `0.4.13` to `0.4.14`.
+- `Cargo.lock`: internal workspace crate versions changed from `0.4.13` to `0.4.14`.
 
 Result:
-- No dependency manifests or lockfiles were changed in reviewed commit scope.
-- No new dependency vulnerabilities were introduced by PR dependency changes.
+- No third-party dependency additions or version upgrades were introduced.
+- No new PR dependency vulnerabilities were identified.
 
 ## Remediation Actions
-- No remediation changes were required because there are no active Dependabot alerts, no code-scanning alerts, and no PR dependency vulnerabilities in the provided inputs.
-- No dependency versions or lockfiles were changed.
+- No code or dependency remediation was required.
+- No security fixes were applied because there are no active Dependabot alerts, no code scanning alerts, and no PR dependency vulnerabilities.
+
+## Verification Notes
+- Attempted runtime vulnerability scan with `cargo audit`, but it could not run in this CI sandbox due to Rust toolchain temp-file write restrictions under `/home/runner/.rustup`.
+- Deterministic review was completed from provided alert artifacts and dependency diffs.
 
 ## Final Status
 - `dependabot` alerts remediated: Not applicable (none present).
