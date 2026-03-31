@@ -80,9 +80,9 @@ fi
 
 for pack in "${PACKS[@]}"; do
   pack_name="$(basename "${pack%.gtpack}")"
-  ref="${REGISTRY}/${OWNER}/${REPO}/${pack_name}:${VERSION_RESOLVED}"
+  ref="${REGISTRY}/${OWNER}/${REPO}/events/${pack_name}:${VERSION_RESOLVED}"
 
-  latest_ref="${REGISTRY}/${OWNER}/${REPO}/${pack_name}:latest"
+  latest_ref="${REGISTRY}/${OWNER}/${REPO}/events/${pack_name}:latest"
   echo "Pushing ${pack_name} -> ${ref}"
   (
     cd "${DIST_DIR}"
@@ -112,7 +112,7 @@ for pack in "${PACKS[@]}"; do
   fi
 
   if [ "${MAKE_PUBLIC}" = "true" ] && [ -n "${GHCR_TOKEN}" ]; then
-    PKG="${REPO}/${pack_name}"
+    PKG="${REPO}/events/${pack_name}"
     PKG_ENC="$(
       PKG="${PKG}" python3 - <<'PY' 2>/dev/null || true
 import os
