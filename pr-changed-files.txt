@@ -1,5 +1,0 @@
-.github/workflows/ci.yml
-.github/workflows/codeql.yml
-.github/workflows/codex-security-fix.yml
-.github/workflows/dependency-review.yml
-.github/workflows/publish_packs.yml
