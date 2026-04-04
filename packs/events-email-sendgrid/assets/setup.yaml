@@ -1,0 +1,25 @@
+provider_id: events-email-sendgrid
+version: 1
+title: Email (SendGrid) event provider setup
+questions:
+  - name: enabled
+    title: Enable email provider
+    kind: boolean
+    required: false
+    default: "true"
+    help: "Enable or disable this event provider"
+    group: General
+  - name: messaging_provider_id
+    title: Messaging provider ID
+    kind: string
+    required: true
+    help: "ID of the messaging provider used for email delivery"
+    placeholder: "messaging-email"
+    group: Connection
+  - name: from
+    title: Default sender email
+    kind: string
+    required: false
+    help: "Default sender email address for outgoing emails"
+    placeholder: "noreply@example.com"
+    group: Email

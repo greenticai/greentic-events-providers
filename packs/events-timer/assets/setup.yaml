@@ -1,0 +1,27 @@
+provider_id: events-timer
+version: 1
+title: Timer event provider setup
+questions:
+  - name: enabled
+    title: Enable timer provider
+    kind: boolean
+    required: false
+    default: "true"
+    help: "Enable or disable this event provider"
+    group: General
+  - name: timezone
+    title: Timezone
+    kind: string
+    required: false
+    default: "UTC"
+    help: "Timezone for timer events (e.g. UTC, America/New_York, Asia/Jakarta)"
+    placeholder: "UTC"
+    group: Schedule
+  - name: default_delay_seconds
+    title: Default delay (seconds)
+    kind: number
+    required: false
+    default: "30"
+    help: "Default delay in seconds before timer fires"
+    placeholder: "30"
+    group: Schedule

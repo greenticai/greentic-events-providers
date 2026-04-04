@@ -3,6 +3,7 @@ version: 0.1.0
 kind: application
 publisher: greentic
 name: greentic.events.timer
+display_name: Timer
 description: Greentic timer/cron event providers
 authors:
   - Greentic Engineering <engineering@greentic.dev>
