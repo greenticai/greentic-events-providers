@@ -3,6 +3,7 @@ version: 0.1.0
 kind: application
 publisher: greentic
 name: greentic.events.email.sendgrid
+display_name: Email (SendGrid)
 description: Greentic Email event providers (SendGrid Inbound Parse)
 components:
 - id: events-email-source

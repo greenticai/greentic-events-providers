@@ -3,6 +3,7 @@ version: 0.1.0
 kind: application
 publisher: greentic
 name: greentic.events.sms.twilio
+display_name: SMS (Twilio)
 description: Greentic SMS event providers (Twilio)
 authors:
   - Greentic Engineering <engineering@greentic.dev>

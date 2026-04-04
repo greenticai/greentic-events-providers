@@ -3,6 +3,7 @@ version: 0.1.0
 kind: application
 publisher: greentic
 name: greentic.events.webhook
+display_name: Webhook
 components:
 - id: events-provider-dummy
   version: 0.1.0

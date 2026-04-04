@@ -1,0 +1,25 @@
+provider_id: events-sms-twilio
+version: 1
+title: SMS (Twilio) event provider setup
+questions:
+  - name: enabled
+    title: Enable SMS provider
+    kind: boolean
+    required: false
+    default: "true"
+    help: "Enable or disable this event provider"
+    group: General
+  - name: messaging_provider_id
+    title: Messaging provider ID
+    kind: string
+    required: true
+    help: "ID of the messaging provider used for SMS delivery"
+    placeholder: "messaging-sms"
+    group: Connection
+  - name: from
+    title: Default sender phone number
+    kind: string
+    required: false
+    help: "Default Twilio sender phone number (E.164 format)"
+    placeholder: "+1234567890"
+    group: SMS
