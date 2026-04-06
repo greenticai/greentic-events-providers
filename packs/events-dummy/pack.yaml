@@ -1,11 +1,11 @@
 pack_id: greentic.events.provider.dummy
 display_name: Dummy
-version: 0.1.0
+version: 0.1.1
 kind: application
 publisher: greentic
 components:
 - id: events-provider-dummy
-  version: 0.1.0
+  version: 0.1.1
   world: greentic:provider/schema-core@1.0.0
   supports: []
   profiles:
@@ -20,7 +20,7 @@ components:
   wasm: components/events-provider-dummy.wasm
   config_schema: schemas/events/dummy/config.schema.json
 - id: events-provider-email
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
@@ -35,7 +35,7 @@ components:
     host: {}
   wasm: components/events-provider-email.wasm
 - id: events-provider-sms
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
@@ -50,7 +50,7 @@ components:
     host: {}
   wasm: components/events-provider-sms.wasm
 - id: events-provider-timer
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
@@ -65,7 +65,7 @@ components:
     host: {}
   wasm: components/events-provider-timer.wasm
 - id: events-provider-webhook
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
@@ -80,7 +80,7 @@ components:
     host: {}
   wasm: components/events-provider-webhook.wasm
 - id: stub
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
@@ -95,7 +95,7 @@ components:
     host: {}
   wasm: components/stub.wasm
 - id: stubs
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
@@ -110,7 +110,7 @@ components:
     host: {}
   wasm: components/stubs/events-email-sink.wasm
 - id: templating.handlebars
-  version: 0.1.0
+  version: 0.1.1
   world: root:component/root
   supports:
   - messaging
