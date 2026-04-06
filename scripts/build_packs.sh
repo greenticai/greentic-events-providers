@@ -53,6 +53,45 @@ find "${DIST_DIR}" -maxdepth 1 -type f -name 'events-*.gtpack' -delete
 find "${DIST_DIR}" -maxdepth 1 -type f -name 'events-*.cbor' -delete
 find "${DIST_DIR}" -maxdepth 1 -type f -name 'events-*.sbom.json' -delete
 
+refresh_source_components() {
+  local target_dir="${ROOT_DIR}/target/wasm32-wasip2/debug"
+  local pack_components_dir="${ROOT_DIR}/packs/components"
+  local source_components=(
+    "events-provider-dummy"
+    "events-provider-email"
+    "events-provider-email-sendgrid"
+    "events-provider-sms"
+    "events-provider-sms-twilio"
+    "events-provider-timer"
+    "events-provider-webhook"
+  )
+
+  mkdir -p "${pack_components_dir}"
+
+  for component in "${source_components[@]}"; do
+    local wasm_basename="${component//-/_}.wasm"
+    local built_wasm="${target_dir}/${wasm_basename}"
+    local vendored_wasm="${pack_components_dir}/${component}.wasm"
+    local fixture_name="${component//-/_}"
+    local fixture_wasm="${ROOT_DIR}/fixtures/packs/${fixture_name}/components/${component}.wasm"
+
+    echo "Refreshing component wasm: ${component}"
+    cargo build --target wasm32-wasip2 -p "${component}"
+
+    if [ ! -f "${built_wasm}" ]; then
+      echo "Built wasm not found for ${component}: ${built_wasm}" >&2
+      exit 1
+    fi
+
+    cp "${built_wasm}" "${vendored_wasm}"
+    if [ -d "$(dirname "${fixture_wasm}")" ]; then
+      cp "${built_wasm}" "${fixture_wasm}"
+    fi
+  done
+}
+
+refresh_source_components
+
 PACK_ROOT="${ROOT_DIR}/packs"
 PACK_DIRS=()
 while IFS= read -r dir; do
