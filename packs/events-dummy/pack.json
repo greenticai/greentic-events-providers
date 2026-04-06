@@ -1,6 +1,6 @@
 {
   "id": "greentic.events.provider.dummy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "meta": {
     "requires_public_base_url": false,
     "capabilities": [
