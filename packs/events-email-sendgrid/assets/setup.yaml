@@ -13,7 +13,7 @@ questions:
     title: Messaging provider ID
     kind: string
     required: true
-    help: "ID of the messaging provider used for email delivery"
+    help: "ID of the messaging provider instance that handles email delivery (API credentials are configured in that provider)"
     placeholder: "messaging-email"
     group: Connection
   - name: from
@@ -23,3 +23,11 @@ questions:
     help: "Default sender email address for outgoing emails"
     placeholder: "noreply@example.com"
     group: Email
+  - name: persistence_key_prefix
+    title: Persistence key prefix
+    kind: string
+    required: false
+    default: "events/email/sendgrid/queued"
+    help: "State store key prefix for queued email requests"
+    placeholder: "events/email/sendgrid/queued"
+    group: Advanced

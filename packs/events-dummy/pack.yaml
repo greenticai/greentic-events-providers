@@ -1,5 +1,6 @@
 pack_id: greentic.events.provider.dummy
-version: 0.1.0
+display_name: Dummy
+version: 0.1.1
 kind: application
 publisher: greentic
 components:
