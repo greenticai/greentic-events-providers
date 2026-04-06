@@ -40,7 +40,7 @@ pub struct ProviderConfigOut {
     #[serde(default = "default_true")]
     pub enabled: bool,
     #[serde(default)]
-    pub target_url: String,
+    pub target_url: Option<String>,
     #[serde(default = "default_method")]
     pub method: String,
     #[serde(default)]
@@ -60,7 +60,7 @@ fn default_method() -> String {
 fn default_config_out() -> ProviderConfigOut {
     ProviderConfigOut {
         enabled: true,
-        target_url: String::new(),
+        target_url: None,
         method: "POST".to_string(),
         auth_token: None,
         timeout_ms: Some(5000),
@@ -68,10 +68,10 @@ fn default_config_out() -> ProviderConfigOut {
 }
 
 fn validate_config_out(config: &ProviderConfigOut) -> Result<(), String> {
-    if config.target_url.trim().is_empty() {
-        return Err("target_url is required".to_string());
-    }
-    if !config.target_url.starts_with("http://") && !config.target_url.starts_with("https://") {
+    if let Some(target_url) = config.target_url.as_deref()
+        && !target_url.starts_with("http://")
+        && !target_url.starts_with("https://")
+    {
         return Err("target_url must be a valid HTTP/HTTPS URL".to_string());
     }
     Ok(())
@@ -102,7 +102,8 @@ struct IngestInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct IngestConfig {
-    target_url: String,
+    #[serde(default)]
+    target_url: Option<String>,
     #[serde(default = "default_method")]
     method: String,
     #[serde(default)]
@@ -203,7 +204,8 @@ fn apply_answers_bridge(mode: &str, answers_cbor: Vec<u8>) -> Vec<u8> {
 
 fn dispatch_json_invoke(op: &str, input_json: &[u8]) -> Vec<u8> {
     match op {
-        "run" | "ingest_http" | "publish" => handle_ingest_http(input_json),
+        "ingest_http" => handle_ingest_http(input_json),
+        "run" | "publish" => handle_publish(input_json),
         other => json_bytes(&json!({"ok": false, "error": format!("unsupported op: {other}")})),
     }
 }
@@ -272,7 +274,7 @@ fn apply_answers_impl(
             .get("enabled")
             .and_then(Value::as_bool)
             .unwrap_or(merged.enabled);
-        merged.target_url = string_or_default(&answers, "target_url", &merged.target_url);
+        merged.target_url = optional_string_from(&answers, "target_url").or(merged.target_url);
         merged.method = string_or_default(&answers, "method", &merged.method);
         if merged.method.trim().is_empty() {
             merged.method = "POST".to_string();
@@ -292,7 +294,7 @@ fn apply_answers_impl(
                 .unwrap_or(merged.enabled);
         }
         if has("target_url") {
-            merged.target_url = string_or_default(&answers, "target_url", &merged.target_url);
+            merged.target_url = optional_string_from(&answers, "target_url");
         }
         if has("method") {
             merged.method = string_or_default(&answers, "method", &merged.method);
@@ -342,8 +344,6 @@ fn handle_ingest_http(input_json: &[u8]) -> Vec<u8> {
     };
 
     let receipt_id = stable_receipt_id(&parsed.event);
-    let request = build_request(&parsed.config, &parsed.event);
-    let dispatched = dispatch_http(&request).is_ok();
     let now = Utc::now().to_rfc3339();
 
     let mut emitted_event = json!({
@@ -372,6 +372,39 @@ fn handle_ingest_http(input_json: &[u8]) -> Vec<u8> {
     json_bytes(&json!({
         "ok": true,
         "receipt_id": receipt_id,
+        "status": "accepted",
+        "dispatched": false,
+        "response": {
+            "status": 200,
+            "headers": { "content-type": "application/json" },
+            "body": "accepted"
+        },
+        "emitted_events": [emitted_event],
+    }))
+}
+
+fn handle_publish(input_json: &[u8]) -> Vec<u8> {
+    let parsed: IngestInput = match serde_json::from_slice(input_json) {
+        Ok(v) => v,
+        Err(e) => {
+            return json_bytes(&json!({"ok": false, "error": format!("invalid input: {e}")}));
+        }
+    };
+
+    let Some(target_url) = parsed.config.target_url.as_deref() else {
+        return json_bytes(&json!({
+            "ok": false,
+            "error": "target_url is required for publish"
+        }));
+    };
+
+    let receipt_id = stable_receipt_id(&parsed.event);
+    let request = build_request(&parsed.config, target_url, &parsed.event);
+    let dispatched = dispatch_http(&request).is_ok();
+
+    json_bytes(&json!({
+        "ok": true,
+        "receipt_id": receipt_id,
         "status": if dispatched { "published" } else { "queued" },
         "dispatched": dispatched,
         "request": request,
@@ -379,8 +412,7 @@ fn handle_ingest_http(input_json: &[u8]) -> Vec<u8> {
             "status": if dispatched { 200 } else { 202 },
             "headers": { "content-type": "application/json" },
             "body": "accepted"
-        },
-        "emitted_events": [emitted_event],
+        }
     }))
 }
 
@@ -392,7 +424,7 @@ struct OutgoingRequest {
     body: Value,
 }
 
-fn build_request(config: &IngestConfig, event: &Value) -> OutgoingRequest {
+fn build_request(config: &IngestConfig, target_url: &str, event: &Value) -> OutgoingRequest {
     let mut headers = config.headers.clone();
     headers
         .entry("content-type".into())
@@ -405,7 +437,7 @@ fn build_request(config: &IngestConfig, event: &Value) -> OutgoingRequest {
 
     OutgoingRequest {
         method: config.method.to_uppercase(),
-        url: config.target_url.clone(),
+        url: target_url.to_string(),
         headers,
         body: json!({ "event": event }),
     }
@@ -492,7 +524,7 @@ mod tests {
             .into_iter()
             .map(|question| question.id)
             .collect::<Vec<_>>();
-        assert_eq!(keys, vec!["target_url"]);
+        assert!(keys.is_empty());
     }
 
     #[test]
@@ -513,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_answers_validates_target_url() {
+    fn apply_answers_validates_optional_target_url_when_present() {
         use bindings::exports::greentic::component::qa::Guest as QaGuest;
         use bindings::exports::greentic::component::qa::Mode;
         let answers = json!({
@@ -554,7 +586,60 @@ mod tests {
     }
 
     #[test]
-    fn handle_ingest_returns_receipt() {
+    fn apply_answers_setup_allows_inbound_only_config() {
+        use bindings::exports::greentic::component::qa::Guest as QaGuest;
+        use bindings::exports::greentic::component::qa::Mode;
+        let answers = json!({
+            "enabled": true
+        });
+        let out =
+            <Component as QaGuest>::apply_answers(Mode::Setup, canonical_cbor_bytes(&answers));
+        let out_json: Value = decode_cbor(&out).expect("decode apply output");
+        assert_eq!(out_json.get("ok"), Some(&Value::Bool(true)));
+        let config = out_json.get("config").expect("config object");
+        assert_eq!(config.get("target_url"), Some(&Value::Null));
+    }
+
+    #[test]
+    fn handle_ingest_returns_receipt_without_target_url() {
+        let input = json!({
+            "config": {
+                "method": "POST"
+            },
+            "event": {"id": 1, "kind": "test"},
+            "tenant": "test-tenant"
+        });
+        let result = handle_ingest_http(&serde_json::to_vec(&input).unwrap());
+        let out: Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(out.get("ok"), Some(&Value::Bool(true)));
+        assert!(out.get("receipt_id").is_some());
+        assert_eq!(
+            out.get("status"),
+            Some(&Value::String("accepted".to_string()))
+        );
+    }
+
+    #[test]
+    fn handle_publish_requires_target_url() {
+        let input = json!({
+            "config": {
+                "method": "POST"
+            },
+            "event": {"id": 1, "kind": "test"},
+        });
+        let result = handle_publish(&serde_json::to_vec(&input).unwrap());
+        let out: Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(out.get("ok"), Some(&Value::Bool(false)));
+        assert!(
+            out.get("error")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .contains("target_url is required")
+        );
+    }
+
+    #[test]
+    fn handle_publish_returns_receipt() {
         let input = json!({
             "config": {
                 "target_url": "https://example.com/hook",
@@ -563,7 +648,7 @@ mod tests {
             "event": {"id": 1, "kind": "test"},
             "tenant": "test-tenant"
         });
-        let result = handle_ingest_http(&serde_json::to_vec(&input).unwrap());
+        let result = handle_publish(&serde_json::to_vec(&input).unwrap());
         let out: Value = serde_json::from_slice(&result).unwrap();
         assert_eq!(out.get("ok"), Some(&Value::Bool(true)));
         assert!(out.get("receipt_id").is_some());

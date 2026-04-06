@@ -52,26 +52,26 @@ pub(crate) const I18N_KEYS: &[&str] = &[
 /// Setup questions for the webhook provider.
 pub(crate) const SETUP_QUESTIONS: &[provider_common::helpers::QaQuestionDef] = &[
     ("enabled", "webhook.qa.setup.enabled", true),
-    ("target_url", "webhook.qa.setup.target_url", true),
+    ("target_url", "webhook.qa.setup.target_url", false),
     ("method", "webhook.qa.setup.method", false),
     ("auth_token", "webhook.qa.setup.auth_token", false),
     ("timeout_ms", "webhook.qa.setup.timeout_ms", false),
 ];
 
 /// Keys for default mode (minimal required config).
-pub(crate) const DEFAULT_KEYS: &[&str] = &["target_url"];
+pub(crate) const DEFAULT_KEYS: &[&str] = &[];
 
 /// I18n pairs for English locale.
 pub(crate) const I18N_PAIRS: &[(&str, &str)] = &[
     ("webhook.op.ingest_http.title", "Ingest HTTP"),
     (
         "webhook.op.ingest_http.description",
-        "Process incoming webhook event",
+        "Receive an inbound webhook event and emit it into the event pipeline",
     ),
     ("webhook.op.publish.title", "Publish"),
     (
         "webhook.op.publish.description",
-        "Publish event to webhook target",
+        "Publish an event to an optional outbound webhook target",
     ),
     ("webhook.schema.input.title", "Webhook input"),
     (
@@ -108,7 +108,7 @@ pub(crate) const I18N_PAIRS: &[(&str, &str)] = &[
     ("webhook.schema.config.target_url.title", "Target URL"),
     (
         "webhook.schema.config.target_url.description",
-        "URL to send webhook events to",
+        "Optional outbound URL used when publishing webhook events",
     ),
     ("webhook.schema.config.method.title", "HTTP Method"),
     (
@@ -133,7 +133,7 @@ pub(crate) const I18N_PAIRS: &[(&str, &str)] = &[
     ("webhook.qa.upgrade.title", "Upgrade"),
     ("webhook.qa.remove.title", "Remove"),
     ("webhook.qa.setup.enabled", "Enable provider"),
-    ("webhook.qa.setup.target_url", "Target URL"),
+    ("webhook.qa.setup.target_url", "Optional Target URL"),
     ("webhook.qa.setup.method", "HTTP Method"),
     ("webhook.qa.setup.auth_token", "Authorization Token"),
     ("webhook.qa.setup.timeout_ms", "Timeout (ms)"),
@@ -257,7 +257,7 @@ fn config_schema() -> SchemaIr {
             ),
             (
                 "target_url",
-                true,
+                false,
                 schema_str_fmt(
                     "webhook.schema.config.target_url.title",
                     "webhook.schema.config.target_url.description",

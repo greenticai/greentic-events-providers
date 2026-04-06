@@ -12,8 +12,8 @@ questions:
   - name: target_url
     title: Target URL
     kind: string
-    required: true
-    help: "URL to send webhook events to (must be valid HTTP/HTTPS URL)"
+    required: false
+    help: "Optional outbound webhook URL for forwarding published events (must be valid HTTP/HTTPS URL)"
     placeholder: "https://example.com/webhook"
     group: Connection
     validate:

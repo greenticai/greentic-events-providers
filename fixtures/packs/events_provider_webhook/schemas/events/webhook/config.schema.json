@@ -7,7 +7,7 @@
       "type": "string",
       "format": "uri",
       "minLength": 1,
-      "description": "Destination URL to publish webhook events to."
+      "description": "Optional destination URL for outbound webhook publishing."
     },
     "method": {
       "type": "string",
@@ -32,6 +32,6 @@
       "description": "Optional timeout in milliseconds for the publish call."
     }
   },
-  "required": ["target_url"],
+  "required": [],
   "additionalProperties": false
 }
