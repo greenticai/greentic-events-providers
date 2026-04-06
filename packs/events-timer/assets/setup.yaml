@@ -25,3 +25,11 @@ questions:
     help: "Default delay in seconds before timer fires"
     placeholder: "30"
     group: Schedule
+  - name: persistence_key_prefix
+    title: Persistence key prefix
+    kind: string
+    required: false
+    default: "events/timer/scheduled"
+    help: "State store key prefix for scheduled timer events"
+    placeholder: "events/timer/scheduled"
+    group: Advanced

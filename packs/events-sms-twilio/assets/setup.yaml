@@ -13,13 +13,21 @@ questions:
     title: Messaging provider ID
     kind: string
     required: true
-    help: "ID of the messaging provider used for SMS delivery"
+    help: "ID of the messaging provider instance that handles SMS delivery via Twilio (Twilio account_sid/auth_token are configured in that provider)"
     placeholder: "messaging-sms"
     group: Connection
   - name: from
     title: Default sender phone number
     kind: string
     required: false
-    help: "Default Twilio sender phone number (E.164 format)"
+    help: "Default Twilio sender phone number in E.164 format"
     placeholder: "+1234567890"
     group: SMS
+  - name: persistence_key_prefix
+    title: Persistence key prefix
+    kind: string
+    required: false
+    default: "events/sms/twilio/queued"
+    help: "State store key prefix for queued SMS requests"
+    placeholder: "events/sms/twilio/queued"
+    group: Advanced
