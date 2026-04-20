@@ -16,7 +16,7 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     env:
-      RUSTUP_TOOLCHAIN: 1.91.0
+      RUSTUP_TOOLCHAIN: 1.95.0
     steps:
       - uses: actions/checkout@v4
       - name: Cache cargo bin
@@ -25,9 +25,9 @@ jobs:
           path: ~/.cargo/bin
           key: ${{ runner.os }}-cargo-bin-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.95.0
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
           components: rustfmt, clippy
       - name: Install wasm32-wasip2 target
         run: rustup target add wasm32-wasip2 --toolchain "${RUSTUP_TOOLCHAIN}"
@@ -81,9 +81,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.94.0
+        uses: dtolnay/rust-toolchain@1.95.0
         with:
-          toolchain: 1.91.0
+          toolchain: 1.95.0
       - name: Run live tests (skips internally if secrets missing)
         run: |
           features=""
