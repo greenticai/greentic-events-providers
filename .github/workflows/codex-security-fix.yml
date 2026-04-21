@@ -1,7 +1,8 @@
 name: Codex Security Fix
 on:
-  pull_request:
-    branches: [main]
+  schedule:
+    # 04:33 UTC — staggered per plans/binary-bifurcation.md Phase A.4 Wave 2.
+    - cron: "33 4 * * *"
   workflow_dispatch:
     inputs:
       branch:
