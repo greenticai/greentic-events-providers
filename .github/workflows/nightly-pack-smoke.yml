@@ -1,0 +1,68 @@
+# Nightly pack-build smoke test.
+# Runs the full ci/local_check.sh (fmt + clippy + test + pack build + doctor +
+# provision conformance). fmt/clippy/test are redundant with pr-ci.yml but
+# local_check.sh has no skip flags so we run it whole.
+#
+# Cron slot: 04:40 UTC — staggered per plans/binary-bifurcation.md Phase A.4.
+
+name: Nightly Pack Smoke
+
+on:
+  schedule:
+    - cron: "40 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-pack-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RUSTUP_TOOLCHAIN: 1.95.0
+
+jobs:
+  pack-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache cargo bin
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-${{ env.RUSTUP_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+      - name: Install wasm32-wasip2 target
+        run: rustup target add wasm32-wasip2 --toolchain "${RUSTUP_TOOLCHAIN}"
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+      - name: Show toolchain/targets
+        run: |
+          rustup show active-toolchain
+          rustup target list --toolchain "${RUSTUP_TOOLCHAIN}" --installed
+      - name: Install latest greentic-pack
+        run: cargo binstall greentic-pack --force --locked -y
+      - name: Install latest greentic-flow
+        run: cargo binstall greentic-flow --force --locked -y
+      - name: Install cargo-component (required by greentic-component for component@0.6.0)
+        run: cargo binstall cargo-component --force --locked -y
+      - name: Install latest greentic-component (from source for $ref fix)
+        run: cargo install --git https://github.com/greenticai/greentic-component --bin greentic-component --locked --force
+      - name: Install greentic-provision (skip if cached)
+        run: |
+          if ! command -v greentic-provision >/dev/null 2>&1; then
+            cargo binstall greentic-provision --force -y
+          fi
+      - name: Show Greentic tool versions
+        run: |
+          greentic-pack --version
+          greentic-flow --version
+          greentic-component --version
+          greentic-provision --help | head -1 || true
+      - name: Local check (fmt + clippy + test + packs)
+        run: PACK_DEBUG=1 ci/local_check.sh
