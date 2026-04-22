@@ -30,7 +30,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 rust-version = "1.91"
-version = "0.4.16"
+version = "0.5.0"
 
 [workspace.dependencies]
 anyhow = "1"
@@ -38,10 +38,10 @@ base64 = "0.22.1"
 blake3 = "1"
 ciborium = { version = "0.2", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-greentic-interfaces-guest = "0.4"
-greentic-oauth-sdk = { version = "0.4" }
-greentic-secrets = { version = "0.4" }
-greentic-types = "0.4"
+greentic-interfaces-guest = ">=0.5.0-0, <0.6.0-0"
+greentic-oauth-sdk = { version = ">=0.5.0-0, <0.6.0-0" }
+greentic-secrets = { version = ">=0.5.0-0, <0.6.0-0" }
+greentic-types = ">=0.5.0-0, <0.6.0-0"
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "form", "json", "rustls"] }
 serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"

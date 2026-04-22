@@ -1,0 +1,31 @@
+name: Nightly Semver Advisory
+
+# Advisory-mode cargo-semver-checks moved off pull_request onto a nightly
+# schedule. See plans/binary-bifurcation.md Phase A.
+
+on:
+  schedule:
+    # 03:51 UTC — moved into 03:XX window per plans/binary-bifurcation.md Phase A.7.2.
+    - cron: "51 3 * * *"
+  workflow_dispatch:
+    inputs:
+      baseline-rev:
+        description: "Optional explicit baseline git ref (default: latest vX.Y.Z tag)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-semver-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  advisory:
+    uses: greenticai/.github/.github/workflows/nightly-semver-advisory.yml@main
+    with:
+      # Only library crates — component cdylibs have no Rust API surface.
+      semver-checks-package: "provider-common, provider-core, provider-webhook, provider-email, provider-sms, provider-timer, sbom-patch"
+      semver-baseline-rev: ${{ inputs.baseline-rev || '' }}
