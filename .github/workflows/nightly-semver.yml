@@ -5,8 +5,8 @@ name: Nightly Semver Advisory
 
 on:
   schedule:
-    # 06:53 UTC — staggered per plans/binary-bifurcation.md Phase A.4 Wave 2.
-    - cron: "53 6 * * *"
+    # 03:51 UTC — moved into 03:XX window per plans/binary-bifurcation.md Phase A.7.2.
+    - cron: "51 3 * * *"
   workflow_dispatch:
     inputs:
       baseline-rev:
