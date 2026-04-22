@@ -1,8 +1,8 @@
 name: Codex Security Fix
 on:
   schedule:
-    # 04:33 UTC — staggered per plans/binary-bifurcation.md Phase A.4 Wave 2.
-    - cron: "33 4 * * *"
+    # 03:10 UTC — moved into 03:XX window per plans/binary-bifurcation.md Phase A.7.2.
+    - cron: "10 3 * * *"
   workflow_dispatch:
     inputs:
       branch:
