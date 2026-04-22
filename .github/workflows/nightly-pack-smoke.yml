@@ -3,13 +3,15 @@
 # provision conformance). fmt/clippy/test are redundant with pr-ci.yml but
 # local_check.sh has no skip flags so we run it whole.
 #
-# Cron slot: 04:40 UTC — staggered per plans/binary-bifurcation.md Phase A.4.
+# See plans/binary-bifurcation.md Phase A.7 for the gate + notify pattern.
 
 name: Nightly Pack Smoke
 
 on:
   schedule:
-    - cron: "40 4 * * *"
+    # 03:54 UTC — inside the 03:00-03:59 UTC nightly window per A.7.2
+    # (custom/heavy nightlies 03:35-03:59).
+    - cron: "54 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +25,66 @@ env:
   RUSTUP_TOOLCHAIN: 1.95.0
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.gate.outputs.should-run }}
+    steps:
+      - id: gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW: ${{ github.workflow }}
+          HEAD_SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          emit() {
+            local should_run="$1"
+            local reason="$2"
+            echo "should-run=${should_run}" >> "${GITHUB_OUTPUT}"
+            {
+              echo "## Nightly gate"
+              echo ""
+              echo "- **Event:** \`${EVENT_NAME}\`"
+              echo "- **Workflow:** \`${WORKFLOW}\`"
+              echo "- **HEAD:** \`${HEAD_SHA}\`"
+              echo "- **Decision:** \`${should_run}\` — ${reason}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            echo "gate: should-run=${should_run} (${reason})"
+          }
+
+          if [ "${EVENT_NAME}" != "schedule" ]; then
+            emit true "non-schedule event (${EVENT_NAME:-unknown}) always runs"
+            exit 0
+          fi
+
+          last_sha=$(gh run list \
+            --repo "${REPO}" \
+            --workflow "${WORKFLOW}" \
+            --status success \
+            --event schedule \
+            --limit 1 \
+            --json headSha \
+            --jq '.[0].headSha // ""' 2>/dev/null || echo "")
+
+          if [ -z "${last_sha}" ]; then
+            emit true "no prior successful scheduled run — establishing baseline"
+            exit 0
+          fi
+
+          if [ "${last_sha}" = "${HEAD_SHA}" ]; then
+            emit false "unchanged since last successful scheduled run (${last_sha})"
+            exit 0
+          fi
+
+          emit true "changed since last successful scheduled run (${last_sha} → ${HEAD_SHA})"
+
   pack-smoke:
+    needs: gate
+    if: needs.gate.outputs.should-run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,3 +127,14 @@ jobs:
           greentic-provision --help | head -1 || true
       - name: Local check (fmt + clippy + test + packs)
         run: PACK_DEBUG=1 ci/local_check.sh
+
+  notify-failure:
+    needs: [gate, pack-smoke]
+    if: failure() && github.event_name == 'schedule'
+    uses: greenticai/.github/.github/workflows/notify-failure.yml@main
+    with:
+      workflow-name: nightly-pack-smoke
+      repo: ${{ github.repository }}
+      step: pack-smoke
+      error: "Nightly events-providers pack-smoke failed — ci/local_check.sh regression."
+    secrets: inherit
