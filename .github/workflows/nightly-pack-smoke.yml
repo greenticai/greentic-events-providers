@@ -127,14 +127,3 @@ jobs:
           greentic-provision --help | head -1 || true
       - name: Local check (fmt + clippy + test + packs)
         run: PACK_DEBUG=1 ci/local_check.sh
-
-  notify-failure:
-    needs: [gate, pack-smoke]
-    if: failure() && github.event_name == 'schedule'
-    uses: greenticai/.github/.github/workflows/notify-failure.yml@main
-    with:
-      workflow-name: nightly-pack-smoke
-      repo: ${{ github.repository }}
-      step: pack-smoke
-      error: "Nightly events-providers pack-smoke failed — ci/local_check.sh regression."
-    secrets: inherit
