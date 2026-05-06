@@ -30,26 +30,74 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 rust-version = "1.91"
-version = "0.5.0"
+version = "1.1.0-dev.0"
 
 [workspace.dependencies]
 anyhow = "1"
 base64 = "0.22.1"
 blake3 = "1"
-ciborium = { version = "0.2", default-features = false }
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-greentic-interfaces-guest = ">=0.5.0-0, <0.6.0-0"
-greentic-oauth-sdk = { version = ">=0.5.0-0, <0.6.0-0" }
-greentic-secrets = { version = ">=0.5.0-0, <0.6.0-0" }
-greentic-types = ">=0.5.0-0, <0.6.0-0"
-reqwest = { version = "0.13", default-features = false, features = ["blocking", "form", "json", "rustls"] }
-serde = { version = "1", features = ["derive"] }
+greentic-interfaces-guest = ">=1.1.0-dev, <1.2.0-0"
+greentic-types = ">=1.1.0-dev, <1.2.0-0"
 serde_cbor = "0.11"
 serde_json = "1"
-serde_yaml_bw = {package="serde_yaml_gtc", version="2.5.2"}
 sha2 = "0.10"
 tempfile = "3"
 thiserror = "2"
-uuid = { version = "1", features = ["v4", "v5"] }
-wit-bindgen = { version = "0.52", default-features = false, features = ["macros"] }
-zip = { version = "0.6", default-features = false, features = ["deflate"] }
+
+[workspace.dependencies.ciborium]
+version = "0.2"
+default-features = false
+
+[workspace.dependencies.chrono]
+version = "0.4"
+default-features = false
+features = [
+    "clock",
+]
+
+[workspace.dependencies.greentic-oauth-sdk]
+version = ">=1.1.0-dev, <1.2.0-0"
+
+[workspace.dependencies.greentic-secrets]
+version = ">=1.1.0-dev, <1.2.0-0"
+
+[workspace.dependencies.reqwest]
+version = "0.13"
+default-features = false
+features = [
+    "blocking",
+    "form",
+    "json",
+    "rustls",
+]
+
+[workspace.dependencies.serde]
+version = "1"
+features = [
+    "derive",
+]
+
+[workspace.dependencies.serde_yaml_bw]
+package = "serde_yaml_gtc"
+version = "2.5.2"
+
+[workspace.dependencies.uuid]
+version = "1"
+features = [
+    "v4",
+    "v5",
+]
+
+[workspace.dependencies.wit-bindgen]
+version = "0.52"
+default-features = false
+features = [
+    "macros",
+]
+
+[workspace.dependencies.zip]
+version = "0.6"
+default-features = false
+features = [
+    "deflate",
+]
